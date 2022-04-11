@@ -1,85 +1,93 @@
-#include "Guijo/pch.hpp"
-#include "Guijo/Object.hpp"
-#include "Guijo/BasicEvents.hpp"
+#include "Guijo/Guijo.hpp"
 
 using namespace Guijo;
 
-const std::size_t MyState = Object::NewState();
-const std::size_t MyOtherState = Object::NewState();
+const std::size_t MyState = Object::newState();
+const std::size_t MyOtherState = Object::newState();
 
 // Custom event
 struct MyEvent : Event {
     MyEvent(std::size_t count) : count(count) {}
     std::size_t count{ 1 };
-    bool Forward(const Object& obj) const override { return obj.has(MyState); }
+    bool forward(const Object& obj) const override { return obj.get(MyState); }
 };
 
 class MyObject : public Object {
 public:
-    MyObject() {
-        // Register event handler through member function
-        HandleEvent<&MyObject::MouseMove>();
-        // Register event handler through lambda, with self parameter
-        HandleEvent<[](MyObject& self, const MyEvent&) {
-            std::cout << "MyEvent!\n";
-        }>();
-        // Register event handler through lambda, without self parameter
-        HandleEvent<[](const ::MyEvent& e) {}>();
-        // Register state handler with match count
-        HandleState<[](const ::MyEvent& e, Object& o, std::size_t matches) {
-            return matches < e.count&& o.has(Visible); // Matches first 'count' visible sub-objects
-        }>(MyOtherState);
-        // Register state handler without match count
-        HandleState<[](const MousePress& e, Object& o) {
-            return o.Hitbox(e.pos); // Matches all objects that were clicked on
-        }>(MyState);
+    int val;
+    MyObject(int val) : val(val) {
+        event<MyObject>();
     }
 
-    void MouseMove(const MouseMove& e) {
-        std::cout << "Mouse Moved!\n";
+    void mouseMove(const MouseMove& e) {
+        // std::cout << val << ": Mouse Moved! (" << e.pos[0] << ", " << e.pos[1] << ")\n";
     }
 
-    void Draw(DrawContext& context) override {}
+    void mouseDrag(const MouseDrag& e) {
+        std::cout << val << ": Mouse Dragged! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+    }
+
+    void mousePress(const MousePress& e) {
+        std::cout << val << ": Mouse Pressed! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+    }
+    
+    void mouseClick(const MouseClick& e) {
+        std::cout << val << ": Mouse Clicked! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+    }
+
+    void mouseRelease(const MouseRelease& e) {
+        std::cout << val << ": Mouse Released! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+    }
+
+    void mouseWheel(const MouseWheel& e) {
+        std::cout << val << ": Mouse Wheel! (" << e.pos[0] << ", " << e.pos[1] << ") " << e.amount << " [" << Key::ToString(e.mod | 'a') << "]\n";
+    }
+
+    void focus(const Focus& e) {
+        std::cout << val << ": Focus!\n";
+    }
+
+    void unfocus(const Unfocus& e) {
+        std::cout << val << ": Unfocus!\n";
+    }
+
+    void mouseEnter(const MouseEnter& e) {
+        std::cout << val << ": Enter!\n";
+    }
+
+    void mouseExit(const MouseExit& e) {
+        std::cout << val << ": Exit!\n";
+    }
+
+    void draw(DrawContext& context) const override {
+        //context.rect({ dimensions() });
+    }
 };
 
 int main() {
-    Pointer<MyObject> container = new MyObject;
+    Gui gui;
 
-    auto& c1 = container->emplace<Object>();
-    auto& c2 = container->emplace<Object>();
-    auto& c3 = container->emplace<Object>();
-    auto& c4 = container->emplace<Object>();
+    Pointer<Window> window = gui.emplace<Window>({ 
+        .name = "HelloWorld",
+        .dimensions{ -1, -1, 500, 500 },
+    });
 
-    c1.dimensions({ 0, 0, 10, 10 });
-    c2.dimensions({ 2, 2, 10, 10 });
-    c3.dimensions({ 4, 4, 10, 10 });
-    c4.dimensions({ 6, 6, 10, 10 });
+    Pointer<Object> container = window->emplace<Object>();
 
-    container->Handle(MyEvent{ 2 });
+    container->dimensions({ 0, 0, 500, 500 });
+    container->set(MyState);
 
-    auto a1 = c1.has(MyOtherState); // True
-    auto a2 = c2.has(MyOtherState); // True
-    auto a3 = c3.has(MyOtherState); // False
-    auto a4 = c4.has(MyOtherState); // False
+    auto& c1 = container->emplace<MyObject>(0);
+    auto& c2 = container->emplace<MyObject>(1);
+    auto& c3 = container->emplace<MyObject>(2);
+    auto& c4 = container->emplace<MyObject>(3);
 
-    c1.set(Visible, false);
+    c1.dimensions({   0,   0, 250, 250 });
+    c4.dimensions({   0, 250, 250, 250 });
+    c3.dimensions({ 250,   0, 250, 250 });
+    c2.dimensions({ 250, 250, 250, 250 });
 
-    container->Handle(MyEvent{ 1 });
+    while (gui.loop());
 
-    auto d1 = c1.has(MyOtherState); // False
-    auto d2 = c2.has(MyOtherState); // True
-    auto d3 = c3.has(MyOtherState); // False
-    auto d4 = c4.has(MyOtherState); // False
-
-    container->Handle(MousePress{ { 3, 3 } });
-
-    auto b1 = c1.has(MyState); // True
-    auto b2 = c2.has(MyState); // True
-    auto b3 = c3.has(MyState); // False
-    auto b4 = c4.has(MyState); // False
-
-    container->Handle(MyEvent{ 2 });
-
-    container->Handle(MouseMove{ { 7, 7 } });
     return 0;
 }

@@ -1,27 +1,28 @@
 #pragma once
 #include "Guijo/pch.hpp"
-#include "Guijo/Utils.hpp"
+#include "Guijo/Utils/Pointer.hpp"
+#include "Guijo/Utils/Utils.hpp"
 
 namespace Guijo {
     class Object;
 
     struct Event {
-        virtual bool Forward(const Object&) const = 0;
+        virtual bool forward(const Object&) const = 0;
 
-        void Handle() const { handled = true; }
-        bool Handled() const { return handled; }
+        void handle() const { m_Handled = true; }
+        bool handled() const { return m_Handled; }
 
     private:
-        mutable bool handled = false;
+        mutable bool m_Handled = false;
     };
 
     struct EventHandler : public Refcounted {
-        virtual void Handle(Object&, const Event&) const = 0;
+        virtual void handle(Object&, const Event&) const = 0;
     };
 
     template<auto Fun>
     struct TypedEventHandler : public EventHandler {
-        void Handle(Object& self, const Event& e) const override {
+        void handle(Object& self, const Event& e) const override {
             using signature = detail::signature_t<decltype(Fun)>;
             using args = detail::function_args_t<signature>;
             // Invocable immediately (static function/lambda)
@@ -47,14 +48,14 @@ namespace Guijo {
     };
 
     struct StateHandler : public Refcounted {
-        virtual bool Handle(Object&, const Event&, Object&, std::size_t) const = 0;
+        virtual bool handle(Object&, const Event&, Object&, std::size_t) const = 0;
     };
 
     template<auto Fun>
     struct TypedStateHandler : public StateHandler {
         const std::size_t state{};
         TypedStateHandler(std::size_t state) : state(state) {}
-        bool Handle(Object& self,
+        bool handle(Object& self,
             const Event& e, Object& c, std::size_t matches) const override {
             using signature = detail::signature_t<decltype(Fun)>;
             using args = detail::function_args_t<signature>;
