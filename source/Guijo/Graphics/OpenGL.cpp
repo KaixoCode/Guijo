@@ -1,4 +1,6 @@
+#ifdef USE_OPENGL
 #include "Guijo/Graphics/Graphics.hpp"
+#define LOAD_AS_STRING(...) "#version 450 core \n"#__VA_ARGS__,
 
 using namespace Guijo;
 
@@ -133,7 +135,10 @@ void Graphics::createBuffers() {
 }
 
 void Graphics::prepare() {
-	wglMakeCurrent(m_Device, m_Context);
+	if (m_Context != current) {
+		wglMakeCurrent(m_Device, m_Context);
+		current = m_Context;
+	}
 
 	glClear(GL_COLOR_BUFFER_BIT);
 	glClearColor(0, 0, 0, 0);
@@ -147,8 +152,8 @@ void Graphics::prepare() {}
 #endif
 
 Graphics::~Graphics() {
-	// Delete the context
-	wglMakeCurrent(m_Device, nullptr);
+	if (m_Context == current)
+		wglMakeCurrent(m_Device, nullptr);
 	wglDeleteContext(m_Context);
 }
 
@@ -195,181 +200,69 @@ void Graphics::runCommand(Command<Viewport>& v) {
 }
 
 void Graphics::runCommand(Command<Rect>& v) {
-	auto& [dim, rotation, radius] = v;
-	static const Shader _shader {
-		// Vertex shader
-		R"~~(
-		#version 450 core
-		layout(location = 0) in vec2 aPos;
-		uniform mat4 mvp;
-		void main() {
-		    gl_Position = mvp * vec4(aPos.x, -aPos.y, 0.0, 1.0);
-		}
-		)~~",
+	auto& [dim, radius, rotation] = v;
+	dim.y(windowSize.height() - dim.y() - dim.height()); // Flip y
 
-		// Fragment shader
-		R"~~(
-		#version 450 core 
-		out vec4 FragColor; 
-		uniform vec4 color; 
-		void main() { 
-		    FragColor = color; 
-		} 
-		)~~"
+	static const Shader _shader{
+#include <Guijo/Shaders/RectVertex.shader>
+#include <Guijo/Shaders/RectFragment.shader>
 	};
-	static const GLint mvp = glGetUniformLocation(_shader.ID, "mvp");
-	static const GLint color = glGetUniformLocation(_shader.ID, "color");
-	static const Shader _shader2 {
-		// Vertex shader
-		R"~~(
-		#version 450 core
-		layout(location = 0) in vec2 aPos;
-		uniform vec4 dim;
-		uniform vec4 rdim;
-		out vec2 uv;
-		out vec2 size;
-		void main() {
-			gl_Position = vec4(dim.x + aPos.x * dim.z, -(dim.y + aPos.y * dim.w), 0.0, 1.0);
-			uv = vec2(aPos.x * rdim.z, aPos.y * rdim.w);
-			size = vec2(rdim.z, rdim.w);
-		}
-		)~~",
+	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
+	static const GLint uf_dim = glGetUniformLocation(_shader.ID, "dim");
+	static const GLint uf_fillColor = glGetUniformLocation(_shader.ID, "fill");
+	static const GLint uf_strokeColor = glGetUniformLocation(_shader.ID, "stroke");
+	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
+	static const GLint uf_radius = glGetUniformLocation(_shader.ID, "radius");
 
-		// Fragment shader
-		R"~~(
-		#version 450 core
-		out vec4 FragColor;
-		uniform vec4 color;
-		uniform vec4 radius;
-		in vec2 uv;
-		in vec2 size;
-		float roundedFrame (float r, float thickness) {
-			float res = 0;
-			if (uv.x > r && uv.x < size.x - r
-					|| uv.y > r && uv.y < size.y - r)
-				res = 1;
-			// bottom left
-			else if (length(uv - vec2(r, r)) < r + thickness && uv.x < r && uv.y < r)
-				res = 1 - (length(uv - vec2(r, r)) - r);
-			// top left
-			else if (length(uv - vec2(r, size.y - r)) < r + thickness && uv.x < r && uv.y > r)
-				res = 1 - (length(uv - vec2(r, size.y - r)) - r);
-			// bottom right
-			else if (length(uv - vec2(size.x - r, r)) < r + thickness && uv.x > r && uv.y < r)
-				res = 1 - (length(uv - vec2(size.x - r, r)) - r);
-			// top right
-			else if (length(uv - vec2(size.x - r, size.y - r)) < r + thickness && uv.x > r && uv.y > r)
-				res = 1 - (length(uv - vec2(size.x - r, size.y - r)) - r);
-    		
-			return max(min(res, 1), 0);
-		}
-		void main() {    
-			FragColor = vec4(color.rgb, color.a * roundedFrame(radius, 2));
-		}
-		)~~"
-	};
-	static const GLint dims2 = glGetUniformLocation(_shader2.ID, "dim");
-	static const GLint rdims2 = glGetUniformLocation(_shader2.ID, "rdim");
-	static const GLint radius2 = glGetUniformLocation(_shader2.ID, "radius");
-	static const GLint color2 = glGetUniformLocation(_shader2.ID, "color");
-
-	if (radius == 0 && rotation != 0) {
-		if (m_PreviousShader != 6) {
-			_shader.Use();
-			glBindVertexArray(quad.vao);
-		}
-		m_PreviousShader = 6;
-
-		glm::mat4 _model{ 1.0f };
-		_model = glm::translate(_model, glm::vec3{ dim.x(), dim.y(), 0.f});
-		_model = glm::translate(_model, glm::vec3{ dim.width() / 2, dim.height() / 2, 0.});
-		_model = glm::rotate(_model, glm::radians(rotation), glm::vec3{ 0, 0, 1 });
-		_model = glm::translate(_model, glm::vec3{ -dim.width() / 2, -dim.height() / 2, 0.});
-		_model = glm::scale(_model, glm::vec3{ dim.width(), dim.height(), 1});
-		_shader.SetMat4(mvp, viewProjection * _model);
-		_shader.SetVec4(color, fill);
-	} else {
-		if (m_PreviousShader != 5) {
-			_shader2.Use();
-			glBindVertexArray(quad.vao);
-		}
-		m_PreviousShader = 5;
-
-		glm::vec4 _dim;
-		_dim.x = (dim.x() + matrix[3].x) * projection[0].x + projection[3].x;
-		_dim.y = (dim.y() + matrix[3].y) * projection[1].y + projection[3].y;
-		_dim.z = dim.width() * projection[0].x;
-		_dim.w = dim.height() * projection[1].y;
-
-		glm::vec4 _mdim{ dim.x(), dim.y(), dim.width(), dim.height() };
-		glm::vec4 _radi{ radius.x(), radius.y(), radius.width(), radius.height() };
-
-		_shader2.SetVec4(dims2, _dim);
-		_shader2.SetVec4(rdims2, _mdim);
-		_shader2.SetVec4(radius2, _radi);
-		_shader2.SetVec4(color2, fill);
+	if (m_PreviousShader != Shaders::RectShader1) {
+		_shader.Use();
+		glBindVertexArray(quad.vao);
+		m_PreviousShader = Shaders::RectShader1;
 	}
+
+	// Adjust 1 pixel for Anti-Aliasing.
+	glm::vec4 _dim{ dim.x() - 1, dim.y() - 1, dim.width() + 2, dim.height() + 2 };
+	glm::vec4 _radius{ radius.x(), radius.y(), radius.width(), radius.height(), };
+	glm::mat4 _model{ 1.0f };
+	_model = glm::translate(_model, glm::vec3{ _dim.x, _dim.y, 0.f });
+	if (rotation != 0) {
+		_model = glm::translate(_model, glm::vec3{ _dim.z / 2, _dim.w / 2, 0. });
+		_model = glm::rotate(_model, glm::radians(rotation), glm::vec3{ 0, 0, 1 });
+		_model = glm::translate(_model, glm::vec3{ -_dim.z / 2, -_dim.w / 2, 0. });
+	}
+
+	_model = glm::scale(_model, glm::vec3{ _dim.z, _dim.w, 1 });
+	_shader.SetMat4(uf_mvp, viewProjection * _model);
+	_shader.SetVec4(uf_dim, _dim);
+	_shader.SetVec4(uf_fillColor, fill);
+	_shader.SetVec4(uf_strokeColor, stroke);
+	_shader.SetFloat(uf_strokeWeight, strokeWeight);
+	_shader.SetVec4(uf_radius, _radius);
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
+
 void Graphics::runCommand(Command<Line>& v) {
 	auto& [start, end, thickness] = v;
 
 	static const Shader _shader {
-		// Vertex shader
-		R"~~(
-		#version 330 core 
-		layout(location = 0) in vec2 aPos; 
-		uniform vec4 dim; 
-		void main() { 
-		    gl_Position = vec4(aPos.x * dim.z + dim.x, aPos.y * dim.w + dim.y, 0.0, 1.0); 
-		}
-		)~~",
-
-		// Fragment shader
-		R"~~(
-		#version 330 core
-		out vec4 FragColor; 
-		uniform vec4 color; 
-		uniform vec4 realdim; 
-		uniform float width; 
-		float minimum_distance(vec2 v, vec2 w, vec2 p) {
-		    // Return minimum distance between line segment vw and point p
-		    float l2 = pow(distance(w, v), 2);  // i.e. |w-v|^2 -  avoid a sqrt
-		    if (l2 == 0.0) return distance(p, v);   // v == w case
-		    // Consider the line extending the segment, parameterized as v + t (w - v).
-		    // We find projection of point p onto the line.
-		    // It falls where t = [(p-v) . (w-v)] / |w-v|^2
-		    // We clamp t from [0,1] to handle points outside the segment vw.
-		    float t = max(0, min(1, dot(p - v, w - v) / l2));
-		    vec2 projection = v + t * (w - v);  // Projection falls on the segment
-		    return distance(p, projection);
-		}
-		void main() { 
-		    float dist = minimum_distance(realdim.zw, realdim.xy, gl_FragCoord.xy);
-		    if (dist / width > 0.5) FragColor = vec4(color.rgb, 2 * (1 - (dist / width)) * color.a);
-		    else FragColor = color;
-		} 
-		)~~"
+#include <Guijo/Shaders/LineVertex.shader>
+#include <Guijo/Shaders/LineFragment.shader>
 	};
 	static const GLint dims = glGetUniformLocation(_shader.ID, "dim");
 	static const GLint realdim = glGetUniformLocation(_shader.ID, "realdim");
 	static const GLint widths = glGetUniformLocation(_shader.ID, "width");
 	static const GLint color = glGetUniformLocation(_shader.ID, "color");
 
-	if (m_PreviousShader != 7) {
+	if (m_PreviousShader != Shaders::LineShader) {
 		_shader.Use();
 		glBindVertexArray(line.vao);
+		m_PreviousShader = Shaders::LineShader;
 	}
-	m_PreviousShader = 7;
 
 	thickness /= scaling;
 
-	glm::vec4 dim = { 
-		start.x(), start.y(), 
-		end.x() - start.x(), 
-		end.y() - start.y() 
-	};
+	glm::vec4 dim = { start.x(), start.y(), end.x(), end.y() };
 
 	glm::vec4 _tdim = dim;
 	float delta_x = _tdim.z - _tdim.x;
@@ -382,12 +275,11 @@ void Graphics::runCommand(Command<Line>& v) {
 	_tdim.y -= dy * thickness * 0.25;
 	_tdim.w += dy * thickness * 0.25;
 
-	glm::vec4 _dim {
-		(_tdim.x + matrix[3].x) * projection[0].x + projection[3].x,
-		(_tdim.y + matrix[3].y) * projection[1].y + projection[3].y,
-		(_tdim.z + matrix[3].x) * projection[0].x + projection[3].x - _dim.x,
-		(_tdim.w + matrix[3].y) * projection[1].y + projection[3].y - _dim.y
-	};
+	glm::vec4 _dim{};
+	_dim.x = (_tdim.x + matrix[3].x) * projection[0].x + projection[3].x;
+	_dim.y = (_tdim.y + matrix[3].y) * projection[1].y + projection[3].y;
+	_dim.z = (_tdim.z + matrix[3].x) * projection[0].x + projection[3].x - _dim.x;
+	_dim.w = (_tdim.w + matrix[3].y) * projection[1].y + projection[3].y - _dim.y;
 
 	glm::vec4 _rdim{
 		(dim.x + matrix[3].x) / scaling,
@@ -419,54 +311,19 @@ void Graphics::runCommand(Command<Ellipse>& v) {
 	auto& [dim, a] = v;
 
 	static const Shader _shader {
-		R"~~(
-		#version 330 core 
-		
-		layout(location = 0) in vec2 aPos; 
-		
-		uniform mat4 mvp; 
-		
-		void main() { 
-		    gl_Position = mvp * vec4(aPos, 0.0, 1.0);
-		} 
-		)~~",
-
-		R"~~(
-		#version 330 core
-		out vec4 FragColor;
-		uniform vec4 color;
-		uniform vec2 angles;
-		uniform vec4 dimensions;
-		void main() {
-		    vec2 pos = gl_FragCoord.xy; 
-		    float x = dimensions.x; 
-		    float y = dimensions.y; 
-		    float l = sqrt(pow(x - pos.x, 2) + pow(y - pos.y, 2)); 
-		    float a = acos((pos.x - x)/l); 
-		    if (y > pos.y) a = 6.28318530718-a; 
-		    float astart = 0; 
-		    float aend = angles.y - angles.x;
-		    if (aend < 0) aend = aend + 6.28318530718; 
-		    float aa = a - angles.x;
-		    if (aa < 0) aa = aa + 6.28318530718; 
-		    float r = (pow(pos.x - x, 2) / pow(dimensions.z / 2, 2)) + (pow(pos.y - y, 2) / pow(dimensions.w / 2, 2)); 
-		    if (aa > aend) { discard; } 
-		    else if (r > 1) { discard; } 
-		    else if (r > 0.90) { FragColor = vec4(color.rgb, 10 * (1 - r) * color.a); } 
-		    else { FragColor = color; } 
-		} 
-		)~~"
+#include <Guijo/Shaders/EllipseVertex.shader>
+#include <Guijo/Shaders/EllipseFragment.shader>
 	};
 	static const GLint mvp = glGetUniformLocation(_shader.ID, "mvp");
 	static const GLint color = glGetUniformLocation(_shader.ID, "color");
 	static const GLint angles = glGetUniformLocation(_shader.ID, "angles");
 	static const GLint dimensions = glGetUniformLocation(_shader.ID, "dimensions");
 
-	if (m_PreviousShader != 3) {
+	if (m_PreviousShader != Shaders::EllipseShader) {
 		_shader.Use();
 		glBindVertexArray(ellipse.vao);
+		m_PreviousShader = Shaders::EllipseShader;
 	}
-	m_PreviousShader = 3;
 
 	glm::mat4 _model{ 1.0f };
 	_model = glm::translate(_model, glm::vec3{ dim.x(), dim.y(), 0});
@@ -526,11 +383,11 @@ void Graphics::runCommand(Command<Triangle>& v) {
 	static const GLint proj = glGetUniformLocation(_shader.ID, "projection");
 	static const GLint color = glGetUniformLocation(_shader.ID, "color");
 
-	if (m_PreviousShader != 2) {
+	if (m_PreviousShader != Shaders::TriangleShader) {
 		_shader.Use();
 		glBindVertexArray(triangle.vao);
+		m_PreviousShader = Shaders::TriangleShader;
 	}
-	m_PreviousShader = 2;
 
 	glm::mat4 _model{ 1.0f };
 	_model = glm::translate(_model, glm::vec3{ dim.x(), dim.y() + dim.height(), 0});
@@ -590,11 +447,11 @@ void Graphics::runCommand(Command<Text>& v) {
 	if (!currentFont) return;
 
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-	if (m_PreviousShader != 1) {
+	if (m_PreviousShader != Shaders::TextShader) {
 		_shader.Use();
 		glBindVertexArray(text.vao);
+		m_PreviousShader = Shaders::TextShader;
 	}
-	m_PreviousShader = 1;
 
 	auto _charMap = &currentFont->size(std::round(fontSize));
 
@@ -650,3 +507,4 @@ void Graphics::runCommand(Command<Text>& v) {
 	glBindTexture(GL_TEXTURE_2D, 0);
 	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 }
+#endif

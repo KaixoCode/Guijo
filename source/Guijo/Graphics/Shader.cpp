@@ -1,3 +1,4 @@
+#ifdef USE_OPENGL
 #include "Guijo/Graphics/Shader.hpp"
 
 namespace Guijo {
@@ -80,3 +81,4 @@ namespace Guijo {
             glDeleteShader(_geometry);
     }
 }
+#endif

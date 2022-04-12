@@ -216,6 +216,27 @@ namespace Guijo {
         constexpr virtual Point<Ty> leftCenter() const { return { left(), centerY() }; }
         constexpr virtual Point<Ty> rightCenter() const { return { right(), centerY() }; }
 
+        constexpr virtual Dimensions inset(const Ty& amt) const {
+            return { x() + amt, y() + amt, width() - 2 * amt, height() - 2 * amt };
+        }
+
+        constexpr virtual Dimensions inset(const Ty& x, const Ty& y) const {
+            return { this->x() + x, this->y() + y, width() - 2 * x, height() - 2 * y };
+        }
+
+        constexpr virtual Dimensions inset(const Ty& left, 
+            const Ty& top, const Ty& right, const Ty& bottom) const {
+            return { x() + left, y() + top, width() - right - left, height() - bottom - top };
+        }
+
+        constexpr virtual Dimensions inset(const Vec2<Ty>& amt) const {
+            return { x() + amt[0], y() + amt[1], width() - 2 * amt[0], height() - 2 * amt[1] };
+        }
+
+        constexpr virtual Dimensions inset(const Vec4<Ty>& amt) const {
+            return { x() + amt[0], y() + amt[1], width() - amt[2] - amt[0], height() - amt[3] - amt[1] };
+        }
+
         constexpr virtual bool contains(const Point<Ty>& v) const {
             return v.x() >= left() && v.x() <= right() && v.y() >= top() && v.y() <= bottom();
         }

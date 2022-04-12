@@ -15,6 +15,7 @@ add_subdirectory(libs)
 file(GLOB_RECURSE GUIJO_SOURCE
   "${GUIJO_SRC}source/*.cpp"
   "${GUIJO_SRC}include/*.hpp"
+  "${GUIJO_SRC}include/*.shader"
 )
 
 set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)

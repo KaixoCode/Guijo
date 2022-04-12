@@ -27,7 +27,17 @@ void GraphicsBase::dimensions(const Dimensions<float>& dims) {
 }
 
 void GraphicsBase::runCommand(Command<Fill>& v) {
-    fill = v.color / 256;
+    auto& [r, g, b, a] = v.color;
+    fill = { r / 255, g / 255, b / 255, a / 255 };
+}
+
+void GraphicsBase::runCommand(Command<Stroke>& v) {
+    auto& [r, g, b, a] = v.color;
+    stroke = { r / 255, g / 255, b / 255, a / 255 };
+}
+
+void GraphicsBase::runCommand(Command<StrokeWeight>& v) {
+    strokeWeight = v.weight;
 }
 
 void GraphicsBase::runCommand(Command<FontSize>& v) {

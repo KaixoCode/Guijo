@@ -34,7 +34,7 @@ namespace Guijo {
 	}
 
 	enum Commands : std::size_t {
-		Fill = 0, Rect, Line, Ellipse, Triangle, 
+		Fill = 0, Stroke, StrokeWeight, Rect, Line, Ellipse, Triangle, 
 		Text, FontSize, SetFont, TextAlign,
 		Translate, PushMatrix, PopMatrix, Viewport,
 		Clip, PushClip, PopClip, ClearClip,
@@ -43,10 +43,12 @@ namespace Guijo {
 
 	template<std::size_t Is> struct Command;
 	template<> struct Command<Fill> { Color color; };
-	template<> struct Command<Rect> { Dimensions<float> rect; float rotation = 0; Dimensions<float> radius = 0; };
+	template<> struct Command<Stroke> { Color color; };
+	template<> struct Command<StrokeWeight> { float weight; };
+	template<> struct Command<Rect> { Dimensions<float> dimensions; Dimensions<float> radius = 0; float rotation = 0;  };
 	template<> struct Command<Line> { Point<float> start; Point<float> end; float thickness = 1; };
-	template<> struct Command<Ellipse> { Dimensions<float> ellipse; Point<float> angles{ 0, 0 }; };
-	template<> struct Command<Triangle> { Dimensions<float> triangle; float rotation = 0; };
+	template<> struct Command<Ellipse> { Dimensions<float> dimensions; Point<float> angles{ 0, 0 }; };
+	template<> struct Command<Triangle> { Dimensions<float> dimensions; float rotation = 0; };
 	template<> struct Command<Text> { std::string_view text; Point<float> pos; };
 	template<> struct Command<FontSize> { float size; };
 	template<> struct Command<SetFont> { std::string_view font; };
@@ -76,6 +78,9 @@ namespace Guijo {
 		friend class GraphicsBase;
 	public:
 		void fill(const Command<Fill>& v) { m_Commands.emplace(v); }
+		void stroke(const Command<Stroke>& v) { m_Commands.emplace(v); }
+		void strokeWeight(const Command<StrokeWeight>& v) { m_Commands.emplace(v); }
+		void noStroke() { m_Commands.emplace(Command<StrokeWeight>{ 0 }); }
 		void rect(const Command<Rect>& v) { m_Commands.emplace(v); }
 		void line(const Command<Line>& v) { m_Commands.emplace(v); }
 		void ellipse(const Command<Ellipse>& v) { m_Commands.emplace(v); }
@@ -96,9 +101,17 @@ namespace Guijo {
 		void fill(const Color& v) {
 			m_Commands.emplace(Command<Fill>{ v });
 		}
+		
+		void stroke(const Color& v) {
+			m_Commands.emplace(Command<Stroke>{ v });
+		}
+		
+		void strokeWeight(float v) {
+			m_Commands.emplace(Command<StrokeWeight>{ v });
+		}
 
-		void rect(const Dimensions<float>& rect, float rotation = 0, float radius = 0) {
-			m_Commands.emplace(Command<Rect>{ rect, rotation, radius }); 
+		void rect(const Dimensions<float>& rect, const Dimensions<float> radius = 0, float rotation = 0) {
+			m_Commands.emplace(Command<Rect>{ rect, radius, rotation });
 		}
 
 		void line(const Point<float>& start, const Point<float>& end, float thickness = 1) {

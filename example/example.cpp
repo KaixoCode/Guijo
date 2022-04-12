@@ -10,7 +10,8 @@ public:
     }
 
     void mouseDrag(const MouseDrag& e) {
-        r = e.pos.x();
+        int index = (e.pos.y() / 500) * 6;
+        p[index] = e.pos.x();
         std::cout << val << ": Mouse Dragged! (" << e.pos.x() << ", " << e.pos.y() << ") [" << Key::ToString(e.mod | 'a') << "]\n";
     }
 
@@ -46,17 +47,27 @@ public:
         std::cout << val << ": Exit!\n";
     }
 
-    float r = 0;
+    float p[6]{ 0, 0, 0, 0, 0 };
     void draw(DrawContext& context) const override {
-        float c = get(Hovering) * 100 + 100;
-        context.fill({ val == 0 || val == 3 ? c : 0, val == 1 || val == 3 ? c : 0, val == 2 ? c : 0, 255.f });
-        context.rect({ .rect = dimensions(), .radius = 50.f + r });
+        float c = get(Hovering) * 50;
+        context.fill({ 255, 255, 255, c });
+        context.stroke({ 255, 255, 255, 255 });
+        context.strokeWeight(p[0] / 10);
+        //context.rect(dimensions().inset(100, 150), { p[1], p[2], p[3], p[4] }, p[5]);
+        context.ellipse(dimensions().inset(100, 150), { p[1], p[2] });
         context.fill({ 255, 255, 255 });
         context.font(Font::Default);
         context.textAlign(Align::Center);
         context.text("test", { x() + width() / 2, y() + height() / 2 });
+
+        context.fill({ 255, 255, 255, 255 });
+        for (int i = 0; i < 6; i++) {
+            float yp = std::floor(i * height() / 6.);
+            context.line({ 0, yp }, { 10, yp });
+        }
     }
 };
+
 
 int main() {
     Gui gui;
@@ -71,14 +82,8 @@ int main() {
     container.dimensions({ 0, 0, 500, 500 });
 
     auto& c1 = container.emplace<MyObject>(0);
-    auto& c2 = container.emplace<MyObject>(1);
-    auto& c3 = container.emplace<MyObject>(2);
-    auto& c4 = container.emplace<MyObject>(3);
 
-    c1.dimensions({  10,  10, 400, 250 });
-    c4.dimensions({  30, 100, 250, 250 });
-    c3.dimensions({ 200,  20, 250, 350 });
-    c2.dimensions({ 250, 200, 200, 250 });
+    c1.dimensions({ 0, 0, 500, 500 });
 
     while (gui.loop());
 

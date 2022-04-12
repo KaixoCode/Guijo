@@ -33,7 +33,9 @@ namespace Guijo {
 		Dimensions<float> windowSize{};
 		float scaling = 1;
 		Font* currentFont = nullptr;
-		Color fill{ 1, 1, 1, 1 };
+		glm::vec4 fill{ 1, 1, 1, 1 };
+		glm::vec4 stroke{ 1, 1, 1, 1 };
+		float strokeWeight = 0;
 		float fontSize = 16;
 		Alignment textAlign = Align::Left | Align::Bottom;
 
@@ -43,6 +45,8 @@ namespace Guijo {
 		}
 
 		virtual void runCommand(Command<Fill>&);
+		virtual void runCommand(Command<Stroke>&);
+		virtual void runCommand(Command<StrokeWeight>&);
 		virtual void runCommand(Command<Rect>&) = 0;
 		virtual void runCommand(Command<Line>&) = 0;
 		virtual void runCommand(Command<Ellipse>&) = 0;

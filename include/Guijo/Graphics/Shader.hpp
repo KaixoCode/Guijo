@@ -3,6 +3,7 @@
 #include "Guijo/Utils/Color.hpp"
 
 namespace Guijo {
+#ifdef USE_OPENGL
     class Shader {
     public:
         unsigned int ID;
@@ -19,9 +20,9 @@ namespace Guijo {
         inline void SetVec2(GLint n, const glm::vec2& v) const { glUniform2fv(n, 1, &v.x); };
         inline void SetVec3(GLint n, const glm::vec3& v) const { glUniform3fv(n, 1, &v.x); };
         inline void SetVec4(GLint n, const glm::vec4& v) const { glUniform4fv(n, 1, &v.x); };
-        inline void SetVec4(GLint n, const Color& v) const { glUniform4fv(n, 1, &v.r); };
         inline void SetMat2(GLint n, const glm::mat2& m) const { glUniformMatrix2fv(n, 1, GL_FALSE, &m[0][0]); };
         inline void SetMat3(GLint n, const glm::mat3& m) const { glUniformMatrix3fv(n, 1, GL_FALSE, &m[0][0]); };
         inline void SetMat4(GLint n, const glm::mat4& m) const { glUniformMatrix4fv(n, 1, GL_FALSE, &m[0][0]); };
     };
+#endif
 }
