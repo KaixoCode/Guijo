@@ -32,7 +32,7 @@ namespace Guijo {
     constexpr StateId Disabled = 4;
     constexpr StateId Selected = 5;
 
-    class Object : public Refcounted, public Dimensions<double> {
+    class Object : public Refcounted, public Dimensions<float> {
     public:
         Object();
         virtual ~Object() {}
@@ -40,7 +40,7 @@ namespace Guijo {
         virtual void draw(DrawContext& context) const;
         virtual void update();
 
-        virtual bool hitbox(Vec2<double> pos) const { return inside(pos); }
+        virtual bool hitbox(Vec2<float> pos) const { return inside(pos); }
 
         State get(StateId v) const;
         State set(StateId v, State value = 1);

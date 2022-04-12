@@ -13,7 +13,7 @@ namespace Guijo {
     struct Pointer {
         constexpr Pointer(Ty* val) : value(val) {}
         constexpr Pointer(Ty& val) : value(&val) {}
-        constexpr Pointer(Pointer&& val) : value(val.value) { val.value = nullptr; }
+        constexpr Pointer(Pointer&& val) noexcept : value(val.value) { val.value = nullptr; }
         constexpr Pointer(const Pointer& val) : value(val.value) { value->remember(); }
         constexpr ~Pointer() { if (value) value->forget(); }
 

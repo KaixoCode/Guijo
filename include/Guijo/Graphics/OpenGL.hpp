@@ -30,8 +30,8 @@ namespace Guijo {
 		
 		int m_PreviousShader = -1;
 		Color m_Fill{ 1, 1, 1, 1 };
-		double m_FontSize = 16;
-		double m_LineHeight = 1.2;
+		float m_FontSize = 16;
+		float m_LineHeight = 1.2;
 		Alignment m_TextAlign = Align::Left | Align::Bottom;
 
 		//GuiCode::Font* m_CurrentFont = nullptr;
@@ -40,7 +40,8 @@ namespace Guijo {
 		HDC m_Device = nullptr;
 		void initialize(HDC handle);
 #endif
-		void prepare(); // Prepare for drawing (i.e. context switching)
+		void prepare() override; // Prepare for drawing (i.e. context switching)
+		void swapBuffers() override;
 
 		void createBuffers();
 

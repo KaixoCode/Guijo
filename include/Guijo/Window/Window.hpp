@@ -7,7 +7,7 @@ namespace Guijo {
 	public:
 		struct Construct {
 			std::string_view name;
-			Dimensions<double> dimensions{ -1, -1, -1, -1 };
+			Dimensions<float> dimensions{ -1, -1, -1, -1 };
 		};
 
 		WindowBase() = default;
@@ -18,8 +18,8 @@ namespace Guijo {
 
 		struct CursorState {
 			MouseButtons buttons = 0;
-			Vec2<double> position{ 0, 0 };
-			Vec2<double> pressed{ 0, 0 };
+			Vec2<float> position{ 0, 0 };
+			Vec2<float> pressed{ 0, 0 };
 		} cursor;
 
 	protected:

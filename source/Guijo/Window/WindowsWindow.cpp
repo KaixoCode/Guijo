@@ -5,14 +5,55 @@ Window::Window(const Construct& c) {
 	createWindow(c);
 };
 
-double Window::x() const { return Object::x(); }
-double Window::y() const { return Object::y(); }
-double Window::width() const { return Object::width(); }
-double Window::height() const { return Object::height(); }
-void Window::x(const double& v) { Object::x(v); }
-void Window::y(const double& v) { Object::y(v); }
-void Window::width(const double& v) { Object::width(v); }
-void Window::height(const double& v) { Object::height(v); }
+float Window::x() const { return Object::x(); }
+float Window::y() const { return Object::y(); }
+float Window::width() const { return Object::width(); }
+float Window::height() const { return Object::height(); }
+Vec2<float> Window::pos() const { return Object::pos(); }
+Vec2<float> Window::size() const { return Object::size(); }
+Vec4<float> Window::dimensions() const { return Object::dimensions(); }
+
+void Window::x(const float& v) { 
+	RECT rect{ v, top(), right(), bottom() };
+	AdjustWindowRect(&rect, WS_VISIBLE, false);
+	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+}
+
+void Window::y(const float& v) { 
+	RECT rect{ left(), v, right(), bottom()};
+	AdjustWindowRect(&rect, WS_VISIBLE, false);
+	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+}
+
+void Window::width(const float& v) {
+	RECT rect{ left(), top(), left() + v, bottom()};
+	AdjustWindowRect(&rect, WS_VISIBLE, false);
+	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+}
+
+void Window::height(const float& v) {
+	RECT rect{ left(), top(), right(), top() + v };
+	AdjustWindowRect(&rect, WS_VISIBLE, false);
+	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+}
+
+void Window::pos(const Vec2<float>& v) {
+	RECT rect{ v[0], v[1], right(), bottom()};
+	AdjustWindowRect(&rect, WS_VISIBLE, false);
+	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+}
+
+void Window::size(const Vec2<float>& v) {
+	RECT rect{ left(), top(), left() + v[0], top() + v[1] };
+	AdjustWindowRect(&rect, WS_VISIBLE, false);
+	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+}
+
+void Window::dimensions(const Vec4<float>& v) {
+	RECT rect{ v[0], v[1], v[2] + v[0], v[3] + v[1] };
+	AdjustWindowRect(&rect, WS_VISIBLE, false);
+	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
+}
 
 bool Window::createWindow(const Construct& c) {
 	m_Id = windowId++;
@@ -47,31 +88,44 @@ bool Window::createWindow(const Construct& c) {
 	else {
 		SetWindowSubclass(m_Handle, windowSubProc, m_Id, (DWORD_PTR)this);
 		SendMessage(m_Handle, WM_CREATE, 0, 0);
+		RECT _rect;
+		if (GetClientRect(m_Handle, &_rect)) {
+			float _x = static_cast<float>(_rect.left);
+			float _y = static_cast<float>(_rect.top);
+			float _width = static_cast<float>(_rect.right - _rect.left);
+			float _height = static_cast<float>(_rect.bottom - _rect.top);
+			resizeEvent({ _x, _y, _width, _height });
+		}
 		return true;
 	}
 }
 
 bool Window::loop() {
 	MSG msg;
-	if (GetMessage(&msg, NULL, 0, 0)) {
-		TranslateMessage(&msg);
-		DispatchMessage(&msg);
-		windowsLoop();
-		return true;
+	std::size_t _handled = 0;
+	while (PeekMessage(&msg, m_Handle, 0, 0, PM_NOREMOVE)) {
+		if (GetMessage(&msg, m_Handle, 0, 0)) {
+			TranslateMessage(&msg);
+			DispatchMessage(&msg);
+		}
+		if (++_handled > 30) break;
 	}
-	else return false;
+	windowsLoop();
+	return !m_ShouldExit;
 }
 
 void Window::windowsLoop() {
 	m_Graphics.prepare();
 	DrawContext context;
+	context.clip({ { 0.f, 0.f, width(), height() }});
+	context.viewport({ { 0.f, 0.f, width(), height() }});
 	update();
 	draw(context);
 	m_Graphics.render(context);
+	m_Graphics.swapBuffers();
 
 	// Go through the even queue
-	while (!m_EventQueue.empty())
-	{
+	while (!m_EventQueue.empty()) {
 		handle(*m_EventQueue.front());
 
 		// Check again if the eventqueue is empty, because some button somewhere
@@ -83,7 +137,7 @@ void Window::windowsLoop() {
 	}
 }
 
-void Window::cursorEvent(double x, double y, KeyMod mod) {
+void Window::cursorEvent(float x, float y, KeyMod mod) {
 	cursor.position[0] = x, cursor.position[1] = y;
 	if (cursor.buttons == MouseButton::None) m_EventQueue.emplace(new MouseMove{ { x, y } });
 	else m_EventQueue.emplace(new MouseDrag{ cursor.pressed, { x, y }, cursor.buttons, mod });
@@ -103,7 +157,7 @@ void Window::mouseButtonEvent(MouseButton button, bool press, KeyMod mod) {
 	}
 }
 
-void Window::mouseWheelEvent(std::int16_t amount, KeyMod mod, double x, double y) {
+void Window::mouseWheelEvent(std::int16_t amount, KeyMod mod, float x, float y) {
 	m_EventQueue.emplace(new MouseWheel{ { x, y }, amount, mod });
 }
 
@@ -119,9 +173,8 @@ void Window::keyEvent(KeyCode key, bool repeat, int action, KeyMod mod) {
 }
 
 void Window::resizeEvent(Dimensions dims) {
-	dimensions(dims);
-	//graphics.dimensions(dims); TODO:
-	//graphics->SetProjection(glm::ortho(0.0f, (float)std::max(width, 5), 0.0f, (float)std::max(height, 5)));
+	Object::dimensions(dims);
+	m_Graphics.dimensions(dims);
 }
 
 LRESULT Window::windowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {
@@ -160,9 +213,7 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
 	if (_self == nullptr) return 0;
 
 	switch (msg) {
-	case WM_LBUTTONDOWN:
-	case WM_RBUTTONDOWN:
-	case WM_MBUTTONDOWN: {
+	case WM_LBUTTONDOWN: case WM_RBUTTONDOWN: case WM_MBUTTONDOWN: {
 		SetCapture(hwnd);
 		MouseButton _button =
 			msg == WM_LBUTTONDOWN ? MouseButton::Left :
@@ -171,9 +222,7 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
 		_self->mouseButtonEvent(_button, true, getCurrentKeyMod());
 		break;
 	}
-	case WM_LBUTTONUP:
-	case WM_RBUTTONUP:
-	case WM_MBUTTONUP: {
+	case WM_LBUTTONUP: case WM_RBUTTONUP: case WM_MBUTTONUP: {
 		MouseButton _button =
 			msg == WM_LBUTTONUP ? MouseButton::Left :
 			msg == WM_RBUTTONUP ? MouseButton::Right :
@@ -183,17 +232,13 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
 		break;
 	}
 	case WM_MOUSEMOVE: {
-		double x = static_cast<double>(GET_X_LPARAM(lparam));
-		double y = static_cast<double>(GET_Y_LPARAM(lparam));
+		float x = static_cast<float>(GET_X_LPARAM(lparam));
+		float y = static_cast<float>(GET_Y_LPARAM(lparam));
 		_self->cursorEvent(x, y, getCurrentKeyMod());
 		break;
 	}
-	case WM_SYSKEYDOWN:
-	case WM_SYSKEYUP:
-	case WM_KEYDOWN:
-	case WM_KEYUP:
-	case WM_SYSCHAR:
-	case WM_CHAR: {
+	case WM_SYSKEYDOWN: case WM_SYSKEYUP: case WM_KEYDOWN:
+	case WM_KEYUP:      case WM_SYSCHAR:  case WM_CHAR: {
 		bool _repeat = (lparam & 0x40000000);
 		int _type = 0; // Release
 		if (msg == WM_SYSKEYDOWN || msg == WM_KEYDOWN) _type = 1; // Press
@@ -204,15 +249,15 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
 	}
 	case WM_MOUSEWHEEL: {
 		RECT _rect;
-		double _x = 0, _y = 0;
+		float _x = 0, _y = 0;
 		if (GetWindowRect(hwnd, &_rect)) {
-			_x = static_cast<double>(_rect.left);
-			_y = static_cast<double>(_rect.top);
+			_x = static_cast<float>(_rect.left);
+			_y = static_cast<float>(_rect.top);
 		}
 
 		std::int16_t _amount = GET_WHEEL_DELTA_WPARAM(wparam);
-		double _xPos = static_cast<double>(GET_X_LPARAM(lparam));
-		double _yPos = static_cast<double>(GET_Y_LPARAM(lparam));
+		float _xPos = static_cast<float>(GET_X_LPARAM(lparam));
+		float _yPos = static_cast<float>(GET_Y_LPARAM(lparam));
 		_self->mouseWheelEvent(_amount, 
 			getCurrentKeyMod(), _xPos - _x, _yPos - _y);
 		break;
@@ -221,11 +266,11 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
 	case WM_SIZE:
 	case WM_SIZING: {
 		RECT _rect;
-		if (GetWindowRect(hwnd, &_rect)) {
-			double _x = static_cast<double>(_rect.left);
-			double _y = static_cast<double>(_rect.top);
-			double _width = static_cast<double>(_rect.right - _rect.left);
-			double _height = static_cast<double>(_rect.bottom - _rect.top);
+		if (GetClientRect(hwnd, &_rect)) {
+			float _x = static_cast<float>(_rect.left);
+			float _y = static_cast<float>(_rect.top);
+			float _width = static_cast<float>(_rect.right - _rect.left);
+			float _height = static_cast<float>(_rect.bottom - _rect.top);
 			_self->resizeEvent({ _x, _y, _width, _height });
 		}
 		break;
@@ -237,7 +282,8 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
 		return 0;
 	}
 	case WM_DESTROY: 
-		PostQuitMessage(0);
+		_self->m_ShouldExit = true;
+		PostQuitMessage(0); 
 		return 0;
 	}
 

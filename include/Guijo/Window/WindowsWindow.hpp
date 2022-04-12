@@ -9,14 +9,20 @@ namespace Guijo {
 		Window(const Construct& c);
 	public:
 
-		double x() const override;
-		double y() const override;
-		double width() const override;
-		double height() const override;
-		void x(const double& v) override;
-		void y(const double& v) override;
-		void width(const double& v) override;
-		void height(const double& v) override;
+		float x() const override;
+		float y() const override;
+		float width() const override;
+		float height() const override;
+		Vec2<float> pos() const override;
+		Vec2<float> size() const override; 
+		Vec4<float> dimensions() const override; 
+		void x(const float& v) override;
+		void y(const float& v) override;
+		void width(const float& v) override;
+		void height(const float& v) override;
+		void pos(const Vec2<float>& v) override;
+		void size(const Vec2<float>& v) override;
+		void dimensions(const Vec4<float>& v) override;
 	
 	private:
 		friend class Gui;
@@ -26,15 +32,16 @@ namespace Guijo {
 		HWND m_Handle{};
 		std::size_t m_Id{};
 		std::queue<std::unique_ptr<Event>> m_EventQueue;
+		bool m_ShouldExit = false;
 
 		bool createWindow(const Construct& c);
 
 		bool loop() override;
 		void windowsLoop();
 
-		void cursorEvent(double x, double y, KeyMod mod);
+		void cursorEvent(float x, float y, KeyMod mod);
 		void mouseButtonEvent(MouseButton button, bool press, KeyMod mod);
-		void mouseWheelEvent(std::int16_t amount, KeyMod mod, double x, double y);
+		void mouseWheelEvent(std::int16_t amount, KeyMod mod, float x, float y);
 		void keyEvent(KeyCode key, bool repeat, int action, KeyMod mod);
 		void resizeEvent(Dimensions dims);
 		static KeyMod getCurrentKeyMod();

@@ -43,7 +43,7 @@ namespace Guijo {
 	};
 
 	enum Commands : std::size_t {
-		Fill, Rect, Line, Ellipse, Triangle, 
+		Fill = 0, Rect, Line, Ellipse, Triangle, 
 		Text, FontSize, Font, TextAlign, LineHeight,
 		Translate, PushMatrix, PopMatrix, Viewport,
 		Clip, PushClip, PopClip, ClearClip,
@@ -53,20 +53,20 @@ namespace Guijo {
 	template<std::size_t Is> struct Command;
 
 	template<> struct Command<Fill> { Color color; };
-	template<> struct Command<Rect> { Vec4<double> rect; double rotation; };
-	template<> struct Command<Line> { Vec4<double> line; double thickness = 1; };
-	template<> struct Command<Ellipse> { Vec4<double> ellipse; Vec2<double> angles{ 0, 0 }; };
-	template<> struct Command<Triangle> { Vec4<double> rect; double rotation; };
-	template<> struct Command<Text> { std::string_view text; Vec2<double> pos; };
-	template<> struct Command<FontSize> { double size; };
+	template<> struct Command<Rect> { Dimensions<float> rect; float rotation; float radius; };
+	template<> struct Command<Line> { Vec4<float> line; float thickness = 1; };
+	template<> struct Command<Ellipse> { Dimensions<float> ellipse; Vec2<float> angles{ 0, 0 }; };
+	template<> struct Command<Triangle> { Dimensions<float> triangle; float rotation; };
+	template<> struct Command<Text> { std::string_view text; Vec2<float> pos; };
+	template<> struct Command<FontSize> { float size; };
 	template<> struct Command<Font> { std::string_view font; };
 	template<> struct Command<TextAlign> { int align; };
-	template<> struct Command<LineHeight> { double height; };
-	template<> struct Command<Translate> { Vec2<double> translate; };
+	template<> struct Command<LineHeight> { float height; };
+	template<> struct Command<Translate> { Vec2<float> translate; };
 	template<> struct Command<PushMatrix> { };
 	template<> struct Command<PopMatrix> { };
-	template<> struct Command<Viewport> { Vec4<double> rect; };
-	template<> struct Command<Clip> { Vec4<double> clip; };
+	template<> struct Command<Viewport> { Dimensions<float> viewport; };
+	template<> struct Command<Clip> { Dimensions<float> clip; };
 	template<> struct Command<PushClip> { };
 	template<> struct Command<PopClip> { };
 	template<> struct Command<ClearClip> { };

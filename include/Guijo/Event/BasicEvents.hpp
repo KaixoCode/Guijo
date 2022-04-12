@@ -14,16 +14,16 @@ namespace Guijo {
     using MouseButtons = std::uint8_t;
 
     struct MouseMove : Event {
-        MouseMove(Vec2<double> pos) : pos(pos) {}
-        Vec2<double> pos{}; // New mouse position
+        MouseMove(Vec2<float> pos) : pos(pos) {}
+        Vec2<float> pos{}; // New mouse position
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseDrag : Event {
-        MouseDrag(Vec2<double> source, Vec2<double> pos, MouseButtons buttons, KeyMod mod)
+        MouseDrag(Vec2<float> source, Vec2<float> pos, MouseButtons buttons, KeyMod mod)
             : source(source), pos(pos), buttons(buttons), mod(mod) {}
-        Vec2<double> source;  // Press position of cursor
-        Vec2<double> pos;     // Position of cursor
+        Vec2<float> source;   // Press position of cursor
+        Vec2<float> pos;      // Position of cursor
         MouseButtons buttons; // Buttons held down
         KeyMod mod;           // Key mods
         bool forward(const Object& c) const override { return c.get(Pressed); };
@@ -46,36 +46,36 @@ namespace Guijo {
     };
 
     struct MousePress : Event {
-        MousePress(Vec2<double> pos, MouseButton button, KeyMod mod)
+        MousePress(Vec2<float> pos, MouseButton button, KeyMod mod)
             : pos(pos), button(button), mod(mod) {}
-        Vec2<double> pos;   // Position of press
+        Vec2<float> pos;    // Position of press
         MouseButton button; // Button pressed
         KeyMod mod;         // Key mods
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseClick : Event {
-        MouseClick(Vec2<double> pos, MouseButton button, KeyMod mod)
+        MouseClick(Vec2<float> pos, MouseButton button, KeyMod mod)
             : pos(pos), button(button), mod(mod) {}
-        Vec2<double> pos;   // Position of click
+        Vec2<float> pos;    // Position of click
         MouseButton button; // Button used to click
         KeyMod mod;         // Key mods
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseWheel : public Event {
-        MouseWheel(Vec2<double> pos, int amount, KeyMod mod)
+        MouseWheel(Vec2<float> pos, int amount, KeyMod mod)
             : pos(pos), amount(amount), mod(mod) {}
-        Vec2<double> pos;    // Cursor position when mousewheel was used
+        Vec2<float> pos;     // Cursor position when mousewheel was used
         std::int16_t amount; // Amount the mousewheel was used
         KeyMod mod;          // Key mods
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseRelease : Event {
-        MouseRelease(Vec2<double> pos, MouseButton button, KeyMod mod)
+        MouseRelease(Vec2<float> pos, MouseButton button, KeyMod mod)
             : pos(pos), button(button), mod(mod) {}
-        Vec2<double> pos;   // Position of the cursor
+        Vec2<float> pos;    // Position of the cursor
         MouseButton button; // Button that was released
         KeyMod mod;         // Key mods
         bool forward(const Object& c) const override { return c.get(Focused); };

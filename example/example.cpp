@@ -19,11 +19,10 @@ public:
         event<MyObject>();
     }
 
-    void mouseMove(const MouseMove& e) {
-        // std::cout << val << ": Mouse Moved! (" << e.pos[0] << ", " << e.pos[1] << ")\n";
-    }
+
 
     void mouseDrag(const MouseDrag& e) {
+        r = e.pos[0];
         std::cout << val << ": Mouse Dragged! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
     }
 
@@ -58,34 +57,36 @@ public:
     void mouseExit(const MouseExit& e) {
         std::cout << val << ": Exit!\n";
     }
-
+    float r = 0;
     void draw(DrawContext& context) const override {
-        //context.rect({ dimensions() });
+        float c = get(Hovering) * 100 + 100;
+        context.fill({ Color{ val == 0 || val == 3 ? c : 0, val == 1 || val == 3 ? c : 0, val == 2 ? c : 0, 255.f } });
+        context.rect({ .rect = dimensions(), .radius = 50.f + r });
     }
 };
 
 int main() {
     Gui gui;
 
-    Pointer<Window> window = gui.emplace<Window>({ 
+    Window& window = gui.emplace<Window>({ 
         .name = "HelloWorld",
         .dimensions{ -1, -1, 500, 500 },
     });
 
-    Pointer<Object> container = window->emplace<Object>();
+    Object& container = window.emplace<Object>();
 
-    container->dimensions({ 0, 0, 500, 500 });
-    container->set(MyState);
+    container.dimensions({ 0, 0, 500, 500 });
+    container.set(MyState);
 
-    auto& c1 = container->emplace<MyObject>(0);
-    auto& c2 = container->emplace<MyObject>(1);
-    auto& c3 = container->emplace<MyObject>(2);
-    auto& c4 = container->emplace<MyObject>(3);
+    auto& c1 = container.emplace<MyObject>(0);
+    auto& c2 = container.emplace<MyObject>(1);
+    auto& c3 = container.emplace<MyObject>(2);
+    auto& c4 = container.emplace<MyObject>(3);
 
-    c1.dimensions({   0,   0, 250, 250 });
-    c4.dimensions({   0, 250, 250, 250 });
-    c3.dimensions({ 250,   0, 250, 250 });
-    c2.dimensions({ 250, 250, 250, 250 });
+    c1.dimensions({  10,  10, 400, 250 });
+    c4.dimensions({  30, 100, 250, 250 });
+    c3.dimensions({ 200,  20, 250, 350 });
+    c2.dimensions({ 250, 200, 200, 250 });
 
     while (gui.loop());
 

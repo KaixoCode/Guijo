@@ -46,12 +46,11 @@ State Object::set(StateId v, State value) {
 }
 
 void Object::handle(const Event& e) {
-    for (auto& _h : m_StateHandlers) // Handle state
-        for (std::size_t _matches = 0; auto & _c : m_Objects)
-            _matches += _h->handle(*this, e, *_c, _matches);
-    // Forward event to sub-objects
-    for (auto& _c : m_Objects)
+    for (auto& _c : m_Objects) // Forward event to sub-objects
         if (e.forward(*_c)) _c->handle(e);
+    for (auto& _h : m_StateHandlers) // Handle state
+        for (std::size_t _matches = 0; auto& _c : std::views::reverse(m_Objects))
+            _matches += _h->handle(*this, e, *_c, _matches);
     // Handle event in our own handlers
     for (auto& _h : m_EventHandlers) _h->handle(*this, e);
 }

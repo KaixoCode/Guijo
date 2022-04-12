@@ -10,10 +10,16 @@ add_library(GLAD STATIC libs/glad/glad.c)
 
 find_package(OpenGL REQUIRED)
 
+add_subdirectory(libs)
+
 file(GLOB_RECURSE GUIJO_SOURCE
   "${GUIJO_SRC}source/*.cpp"
   "${GUIJO_SRC}include/*.hpp"
 )
+
+set(GLFW_BUILD_DOCS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_TESTS OFF CACHE BOOL "" FORCE)
+set(GLFW_BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
 
 set(GUIJO_INCLUDE ${GUIJO_SRC}include/ ${GUIJO_SRC}libs/)
 
@@ -23,8 +29,17 @@ option(GUIJO_BUILD_DOCS "Guijo Build Docs" OFF)
 add_library(${GUIJO} STATIC ${GUIJO_SOURCE})
 
 target_compile_definitions(${GUIJO} PUBLIC USE_OPENGL)
-include_directories(${GUIJO} PRIVATE ${GUIJO_INCLUDE})
-target_link_libraries(${GUIJO} PRIVATE ${OPENGL_LIBRARY} GLAD comctl32 propsys dwmapi gdiplus user32)
+include_directories(${GUIJO} ${GUIJO_INCLUDE})
+target_link_libraries(${GUIJO} PUBLIC
+  ${OPENGL_LIBRARY} 
+  GLAD
+  freetype
+  comctl32 
+  propsys 
+  dwmapi 
+  gdiplus 
+  user32
+)
 target_precompile_headers(${GUIJO} PRIVATE "${GUIJO_SRC}include/Guijo/pch.hpp")
 
 source_group(TREE ${GUIJO_SRC} FILES ${GUIJO_SOURCE})

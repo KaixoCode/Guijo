@@ -136,6 +136,17 @@ namespace Guijo {
             auto& [_x, _y] = v;
             return _x >= left() && _x <= right() && _y >= top() && _y <= bottom();
         }
+        constexpr Dimensions overlaps(const Dimensions& o) const {
+            if (width() == -1 || height() == -1)
+                return o;
+            Ty x5 = std::max(x(), o.x());
+            Ty y5 = std::max(y(), o.y());
+            Ty x6 = std::min(x() + width(), o.x() + o.width());
+            Ty y6 = std::min(y() + height(), o.y() + o.height());
+            if (x5 > x6 || y5 > y6)
+                return { 0, 0, 0, 0 };
+            return { x5, y5, x6 - x5, y6 - y5 };
+        }
 
         template<size_t I> requires (I < 4) constexpr auto& get()& { return data[I]; }
         template<size_t I> requires (I < 4) constexpr auto const& get() const& { data[I]; }
@@ -150,16 +161,16 @@ namespace Guijo {
         template<class T> constexpr Dimensions operator|(const T& o) const { return data | 0; }
         template<class T> constexpr Dimensions operator^(const T& o) const { return data ^ 0; }
 
-        template<class T> constexpr Dimensions& operator+=(const T& o) { return data += o; }
-        template<class T> constexpr Dimensions& operator-=(const T& o) { return data -= o; }
-        template<class T> constexpr Dimensions& operator*=(const T& o) { return data *= o; }
-        template<class T> constexpr Dimensions& operator/=(const T& o) { return data /= o; }
-        template<class T> constexpr Dimensions& operator%=(const T& o) { return data %= o; }
-        template<class T> constexpr Dimensions& operator&=(const T& o) { return data &= o; }
-        template<class T> constexpr Dimensions& operator|=(const T& o) { return data |= o; }
-        template<class T> constexpr Dimensions& operator^=(const T& o) { return data ^= o; }
+        template<class T> constexpr Dimensions& operator+=(const T& o) { data += o; return *this; }
+        template<class T> constexpr Dimensions& operator-=(const T& o) { data -= o; return *this; }
+        template<class T> constexpr Dimensions& operator*=(const T& o) { data *= o; return *this; }
+        template<class T> constexpr Dimensions& operator/=(const T& o) { data /= o; return *this; }
+        template<class T> constexpr Dimensions& operator%=(const T& o) { data %= o; return *this; }
+        template<class T> constexpr Dimensions& operator&=(const T& o) { data &= o; return *this; }
+        template<class T> constexpr Dimensions& operator|=(const T& o) { data |= o; return *this; }
+        template<class T> constexpr Dimensions& operator^=(const T& o) { data ^= o; return *this; }
 
-        template<class T> constexpr Dimensions& operator=(const T& o) { return data = o; }
+        template<class T> constexpr Dimensions& operator=(const T& o) { data = o; return *this; }
         template<class T> constexpr bool operator==(const T& o) const { return data == o; }
         template<class T> constexpr bool operator!=(const T& o) const { return data != o; }
 
