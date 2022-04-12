@@ -3,125 +3,32 @@
 #include "Guijo/Utils/Vec.hpp"
 
 namespace Guijo {
-#define CHECK(x, msg, then) if (auto error = x) { std::cout << msg << '\n'; then; }
-
-	class FontType {
+	class Font {
 		static inline FT_Library library;
 		static inline int references = 0;
 
-	public:
 		struct CharMap {
 			struct Character {
 				unsigned int index = static_cast<unsigned int>(-1);
-				Vec2<int> size{};
-				Vec2<int> bearing{};
+				Point<int> size{};
+				Point<int> bearing{};
 				unsigned int advance{};
 			};
 
-			CharMap(int size, FT_Face& face)
-				: m_Size(size), m_Face(face) { Initialize(); }
+			CharMap(int size, FT_Face& face);
 
-			Character& Char(char c) {
-				if (c < 0)
-					return m_CharMap[0];
-				return m_CharMap[c];
-			}
+			Character& character(char c);
 
-			float Height() { return m_Ascender - m_Descender; }
-			float Ascender() { return m_Ascender; }
-			float Descender() { return m_Descender; }
-			float Middle() { return (m_Size + m_Descender) / 2; }
+			float height() const { return m_Ascender - m_Descender; }
+			float ascender() const { return m_Ascender; }
+			float descender() const { return m_Descender; }
+			float middle() const { return (m_Size + m_Descender) / 2; }
 
 			unsigned int texture;
 
 		private:
-			void Initialize() {
-				FT_Set_Pixel_Sizes(m_Face, 0, m_Size);
-				glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+			void initialize();
 
-				int _width = m_Size;
-				int _height = m_Size;
-
-				glGenTextures(1, &texture);
-				glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
-				glTexImage3D(GL_TEXTURE_2D_ARRAY, 0, GL_RGBA, _width, _height, 128, 0, GL_RGBA, GL_UNSIGNED_BYTE, 0);
-
-				m_Ascender = m_Face->size->metrics.ascender / 64.f;
-				m_Descender = m_Face->size->metrics.descender / 64.f;
-				m_Height = m_Face->size->metrics.height / 64.f;
-
-				unsigned char* empty = new unsigned char[_width * _height * 4];
-				for (int i = 0; i < _width * _height * 4; i++)
-					empty[i] = 0;
-
-				for (unsigned int _c = 0; _c < 128; _c++) {
-					if (FT_Load_Char(m_Face, _c, FT_LOAD_DEFAULT)) {
-						//LOG("ERROR::FREETYTPE: Failed to load Glyph");
-						continue;
-					}
-
-					if (FT_Render_Glyph(m_Face->glyph, FT_RENDER_MODE_LCD)) {
-						//LOG("ERROR::FREETYTPE: Failed to load Glyph");
-						continue;
-					}
-
-					Character _character = {
-						_c,
-						{ m_Face->glyph->bitmap.width / 3, m_Face->glyph->bitmap.rows },
-						{ m_Face->glyph->bitmap_left, m_Face->glyph->bitmap_top },
-						static_cast<unsigned int>(m_Face->glyph->advance.x)
-					};
-
-					// Coords of small array
-					int subx = 0;
-					int suby = -(_height - _character.size[1]); // Initial offset for y
-					for (int y = 0; y < _height; y++) {
-						for (int x = 0; x < _width * 4; x++) {
-							// Default value = 0
-							unsigned char value = 0;
-
-							// Don't get alpha values, because they don't exist
-							bool notAlpha = (x % 4) != 3;
-
-							// Make sure subx and suby within boundaries
-							if (notAlpha && subx < m_Face->glyph->bitmap.width && 
-								suby >= 0 && suby < m_Face->glyph->bitmap.rows) {
-								// Sub index using amount of bytes * y + x
-								int subindex = suby * m_Face->glyph->bitmap.pitch + subx;
-								value = m_Face->glyph->bitmap.buffer[subindex];
-								subx++; // Increment the x
-							}
-
-							// Index in bigger array
-							int index = y * (_width * 4) + x;
-							empty[index] = value;
-						}
-						subx = 0; // reset x
-						suby++;   // increment y
-					}
-
-					glTexSubImage3D(
-						GL_TEXTURE_2D_ARRAY,
-						0, 0, 0, _c,
-						_width,
-						_height,
-						1, GL_RGBA,
-						GL_UNSIGNED_BYTE,
-						empty
-					);
-
-					m_CharMap[_c] = _character;
-				}
-				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-				glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-
-				glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
-				delete[] empty;
-			}
-
-			Character nullchar{};
 			Character m_CharMap[128]{};
 			int m_Size{};
 			float m_Ascender{};
@@ -130,34 +37,18 @@ namespace Guijo {
 			FT_Face& m_Face;
 		};
 
-		FontType(const std::string& path)
-			: m_Path(path) {
-			references++;
-			if (!library)
-				CHECK(FT_Init_FreeType(&library), "Failed to initialize FreeType2 library", return);
+	public:
+		static inline std::string_view Default = "segoeui";
+		static void load(std::string_view path, std::string_view name);
+		static bool load(std::string_view name);
+		static float width(const char c, std::string_view font, float size);
+		static float width(std::string_view c, std::string_view font, float size);
 
-			CHECK(FT_New_Face(library, path.c_str(), 0, &m_Face), "Failed to open font file " << path, return);
-		}
+		Font(std::string_view path);
+		Font(const Font& other);
+		~Font();
 
-		FontType(const FontType& other)
-			: m_Path(other.m_Path) {
-			references++;
-			CHECK(FT_New_Face(library, m_Path.c_str(), 0, &m_Face), "Failed to open font file " << m_Path, return);
-		}
-
-		~FontType() {
-			CHECK(FT_Done_Face(m_Face), "Failed to free font face", ;);
-
-			references--;
-			if (references == 0)
-				CHECK(FT_Done_FreeType(library), "Failed to free FreeType2 library", ;);
-		}
-
-		CharMap& Size(int size) {
-			return m_SizeMap.contains(size)
-				? m_SizeMap.find(size)->second
-				: m_SizeMap.insert({ size, { size, m_Face } }).first->second;
-		}
+		CharMap& size(int size);
 
 	private:
 		std::string m_Path{};

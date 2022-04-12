@@ -18,8 +18,8 @@ namespace Guijo {
 
 		struct CursorState {
 			MouseButtons buttons = 0;
-			Vec2<float> position{ 0, 0 };
-			Vec2<float> pressed{ 0, 0 };
+			Point<float> position{ 0, 0 };
+			Point<float> pressed{ 0, 0 };
 		} cursor;
 
 	protected:

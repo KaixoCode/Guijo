@@ -9,9 +9,9 @@ float Window::x() const { return Object::x(); }
 float Window::y() const { return Object::y(); }
 float Window::width() const { return Object::width(); }
 float Window::height() const { return Object::height(); }
-Vec2<float> Window::pos() const { return Object::pos(); }
-Vec2<float> Window::size() const { return Object::size(); }
-Vec4<float> Window::dimensions() const { return Object::dimensions(); }
+Point<float> Window::pos() const { return Object::pos(); }
+Point<float> Window::size() const { return Object::size(); }
+Dimensions<float> Window::dimensions() const { return Object::dimensions(); }
 
 void Window::x(const float& v) { 
 	RECT rect{ v, top(), right(), bottom() };
@@ -20,13 +20,13 @@ void Window::x(const float& v) {
 }
 
 void Window::y(const float& v) { 
-	RECT rect{ left(), v, right(), bottom()};
+	RECT rect{ left(), v, right(), bottom() };
 	AdjustWindowRect(&rect, WS_VISIBLE, false);
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
 }
 
 void Window::width(const float& v) {
-	RECT rect{ left(), top(), left() + v, bottom()};
+	RECT rect{ left(), top(), left() + v, bottom() };
 	AdjustWindowRect(&rect, WS_VISIBLE, false);
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
 }
@@ -37,20 +37,20 @@ void Window::height(const float& v) {
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
 }
 
-void Window::pos(const Vec2<float>& v) {
-	RECT rect{ v[0], v[1], right(), bottom()};
+void Window::pos(const Point<float>& v) {
+	RECT rect{ v.x(), v.y(), right(), bottom() };
 	AdjustWindowRect(&rect, WS_VISIBLE, false);
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
 }
 
-void Window::size(const Vec2<float>& v) {
-	RECT rect{ left(), top(), left() + v[0], top() + v[1] };
+void Window::size(const Point<float>& v) {
+	RECT rect{ left(), top(), left() + v.width(), top() + v.height() };
 	AdjustWindowRect(&rect, WS_VISIBLE, false);
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
 }
 
-void Window::dimensions(const Vec4<float>& v) {
-	RECT rect{ v[0], v[1], v[2] + v[0], v[3] + v[1] };
+void Window::dimensions(const Dimensions<float>& v) {
+	RECT rect{ v.left(), v.top(), v.right(), v.bottom() };
 	AdjustWindowRect(&rect, WS_VISIBLE, false);
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
 }
@@ -115,30 +115,23 @@ bool Window::loop() {
 }
 
 void Window::windowsLoop() {
-	m_Graphics.prepare();
-	DrawContext context;
-	context.clip({ { 0.f, 0.f, width(), height() }});
-	context.viewport({ { 0.f, 0.f, width(), height() }});
-	update();
-	draw(context);
-	m_Graphics.render(context);
+	update(); // Update cycle
+	
+	m_Graphics.prepare(); // Graphics cycle
+	m_Graphics.context.clip({ 0.f, 0.f, width(), height() });
+	m_Graphics.context.viewport({ 0.f, 0.f, width(), height() });
+	draw(m_Graphics.context);
+	m_Graphics.render();
 	m_Graphics.swapBuffers();
 
-	// Go through the even queue
-	while (!m_EventQueue.empty()) {
+	while (!m_EventQueue.empty()) { // Event cycle
 		handle(*m_EventQueue.front());
-
-		// Check again if the eventqueue is empty, because some button somewhere
-		// might trigger a resize of the window, which will trigger this Window::Update
-		// which will finish this while loop, and then exit out of AddEvent about here ^
-		// and then m_EventQueue will be empty, causing an exception when calling pop().
-		if (!m_EventQueue.empty())
-			m_EventQueue.pop();
+		m_EventQueue.pop();
 	}
 }
 
 void Window::cursorEvent(float x, float y, KeyMod mod) {
-	cursor.position[0] = x, cursor.position[1] = y;
+	cursor.position = { x, y };
 	if (cursor.buttons == MouseButton::None) m_EventQueue.emplace(new MouseMove{ { x, y } });
 	else m_EventQueue.emplace(new MouseDrag{ cursor.pressed, { x, y }, cursor.buttons, mod });
 }

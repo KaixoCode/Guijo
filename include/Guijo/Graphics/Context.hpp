@@ -22,6 +22,7 @@ namespace Guijo {
 	}
 	using Alignment = std::uint8_t;
 
+	// Converts trivially destructible types into a unique ptr of raw bytes
 	template<class ...Tys> 
 		requires ((std::is_trivially_destructible_v<std::decay_t<Tys>> && ...))
 	std::unique_ptr<uint8_t[]> make(Tys&&...args) {
@@ -32,37 +33,25 @@ namespace Guijo {
 		return std::move(_ptr);
 	}
 
-	struct CommandData {
-		template<class Ty> CommandData(const Ty& val)
-			: type(typeid(Ty)), data(make(val)) {}
-
-		const std::type_info& type;
-		std::unique_ptr<uint8_t[]> data;
-
-		template<class Ty> Ty& get() { return *reinterpret_cast<Ty*>(data.get()); }
-	};
-
 	enum Commands : std::size_t {
 		Fill = 0, Rect, Line, Ellipse, Triangle, 
-		Text, FontSize, Font, TextAlign, LineHeight,
+		Text, FontSize, SetFont, TextAlign,
 		Translate, PushMatrix, PopMatrix, Viewport,
 		Clip, PushClip, PopClip, ClearClip,
 		Amount
 	};
 
 	template<std::size_t Is> struct Command;
-
 	template<> struct Command<Fill> { Color color; };
-	template<> struct Command<Rect> { Dimensions<float> rect; float rotation; float radius; };
-	template<> struct Command<Line> { Vec4<float> line; float thickness = 1; };
-	template<> struct Command<Ellipse> { Dimensions<float> ellipse; Vec2<float> angles{ 0, 0 }; };
-	template<> struct Command<Triangle> { Dimensions<float> triangle; float rotation; };
-	template<> struct Command<Text> { std::string_view text; Vec2<float> pos; };
+	template<> struct Command<Rect> { Dimensions<float> rect; float rotation = 0; Dimensions<float> radius = 0; };
+	template<> struct Command<Line> { Point<float> start; Point<float> end; float thickness = 1; };
+	template<> struct Command<Ellipse> { Dimensions<float> ellipse; Point<float> angles{ 0, 0 }; };
+	template<> struct Command<Triangle> { Dimensions<float> triangle; float rotation = 0; };
+	template<> struct Command<Text> { std::string_view text; Point<float> pos; };
 	template<> struct Command<FontSize> { float size; };
-	template<> struct Command<Font> { std::string_view font; };
-	template<> struct Command<TextAlign> { int align; };
-	template<> struct Command<LineHeight> { float height; };
-	template<> struct Command<Translate> { Vec2<float> translate; };
+	template<> struct Command<SetFont> { std::string_view font; };
+	template<> struct Command<TextAlign> { Alignment align; };
+	template<> struct Command<Translate> { Point<float> translate; };
 	template<> struct Command<PushMatrix> { };
 	template<> struct Command<PopMatrix> { };
 	template<> struct Command<Viewport> { Dimensions<float> viewport; };
@@ -71,27 +60,86 @@ namespace Guijo {
 	template<> struct Command<PopClip> { };
 	template<> struct Command<ClearClip> { };
 
+	struct CommandData {
+		template<std::size_t Ty> CommandData(const Command<Ty>& val)
+			: type(Ty), data(make(val)) {}
+
+		std::size_t type;
+		std::unique_ptr<uint8_t[]> data;
+
+		template<std::size_t Ty> Command<Ty>& get() { 
+			return *reinterpret_cast<Command<Ty>*>(data.get()); 
+		}
+	};
+
 	class DrawContext {
 		friend class GraphicsBase;
 	public:
-		void fill(Command<Fill> v) { m_Commands.emplace(v); }
-		void rect(Command<Rect> v) { m_Commands.emplace(v); }
-		void line(Command<Line> v) { m_Commands.emplace(v); }
-		void ellipse(Command<Ellipse> v) { m_Commands.emplace(v); }
-		void triangle(Command<Triangle> v) { m_Commands.emplace(v); }
-		void text(Command<Text> v) { m_Commands.emplace(v); }
-		void fontSize(Command<FontSize> v) { m_Commands.emplace(v); }
-		void font(Command<Font> v) { m_Commands.emplace(v); }
-		void textAlign(Command<TextAlign> v) { m_Commands.emplace(v); }
-		void lineHeight(Command<LineHeight> v) { m_Commands.emplace(v); }
-		void translate(Command<Translate> v) { m_Commands.emplace(v); }
-		void pushMatrix(Command<PushMatrix> v) { m_Commands.emplace(v); }
-		void popMatrix(Command<PopMatrix> v) { m_Commands.emplace(v); }
-		void viewport(Command<Viewport> v) { m_Commands.emplace(v); }
-		void clip(Command<Clip> v) { m_Commands.emplace(v); }
-		void pushClip(Command<PushClip> v) { m_Commands.emplace(v); }
-		void popClip(Command<PopClip> v) { m_Commands.emplace(v); }
-		void clearClip(Command<ClearClip> v) { m_Commands.emplace(v); }
+		void fill(const Command<Fill>& v) { m_Commands.emplace(v); }
+		void rect(const Command<Rect>& v) { m_Commands.emplace(v); }
+		void line(const Command<Line>& v) { m_Commands.emplace(v); }
+		void ellipse(const Command<Ellipse>& v) { m_Commands.emplace(v); }
+		void triangle(const Command<Triangle>& v) { m_Commands.emplace(v); }
+		void text(const Command<Text>& v) { m_Commands.emplace(v); }
+		void fontSize(const Command<FontSize>& v) { m_Commands.emplace(v); }
+		void font(const Command<SetFont>& v) { m_Commands.emplace(v); }
+		void textAlign(const Command<TextAlign>& v) { m_Commands.emplace(v); }
+		void translate(const Command<Translate>& v) { m_Commands.emplace(v); }
+		void pushMatrix() { m_Commands.emplace(Command<PushMatrix>{}); }
+		void popMatrix() { m_Commands.emplace(Command<PopMatrix>{}); }
+		void viewport(const Command<Viewport>& v) { m_Commands.emplace(v); }
+		void clip(const Command<Clip>& v) { m_Commands.emplace(v); }
+		void pushClip() { m_Commands.emplace(Command<PushClip>{}); }
+		void popClip() { m_Commands.emplace(Command<PopClip>{}); }
+		void clearClip() { m_Commands.emplace(Command<ClearClip>{}); }
+
+		void fill(const Color& v) {
+			m_Commands.emplace(Command<Fill>{ v });
+		}
+
+		void rect(const Dimensions<float>& rect, float rotation = 0, float radius = 0) {
+			m_Commands.emplace(Command<Rect>{ rect, rotation, radius }); 
+		}
+
+		void line(const Point<float>& start, const Point<float>& end, float thickness = 1) {
+			m_Commands.emplace(Command<Line>{ start, end, thickness }); 
+		}
+
+		void ellipse(const Dimensions<float>& ellipse, const Point<float>& angles = { 0, 0 }) {
+			m_Commands.emplace(Command<Ellipse>{ ellipse, angles });
+		}
+
+		void triangle(const Dimensions<float>& triangle, float rotation = 0) {
+			m_Commands.emplace(Command<Triangle>{ triangle, rotation });
+		}
+
+		void text(std::string_view text, const Point<float>& pos) { 
+			m_Commands.emplace(Command<Text>{ text, pos });
+		}
+
+		void fontSize(float size) { 
+			m_Commands.emplace(Command<FontSize>{ size });
+		}
+
+		void font(std::string_view font) {
+			m_Commands.emplace(Command<SetFont>{ font });
+		}
+
+		void textAlign(Alignment align) { 
+			m_Commands.emplace(Command<TextAlign>{ align });
+		}
+
+		void translate(const Point<float>& translate) {
+			m_Commands.emplace(Command<Translate>{ translate });
+		}
+
+		void viewport(const Dimensions<float>& viewport) {
+			m_Commands.emplace(Command<Viewport>{ viewport });
+		}
+
+		void clip(Dimensions<float> clip) { 
+			m_Commands.emplace(Command<Clip>{ clip });
+		}
 
 	private:
 		std::queue<CommandData> m_Commands;

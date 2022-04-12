@@ -40,7 +40,7 @@ namespace Guijo {
         virtual void draw(DrawContext& context) const;
         virtual void update();
 
-        virtual bool hitbox(Vec2<float> pos) const { return inside(pos); }
+        virtual bool hitbox(Point<float> pos) const { return contains(pos); }
 
         State get(StateId v) const;
         State set(StateId v, State value = 1);

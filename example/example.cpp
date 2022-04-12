@@ -2,16 +2,6 @@
 
 using namespace Guijo;
 
-const std::size_t MyState = Object::newState();
-const std::size_t MyOtherState = Object::newState();
-
-// Custom event
-struct MyEvent : Event {
-    MyEvent(std::size_t count) : count(count) {}
-    std::size_t count{ 1 };
-    bool forward(const Object& obj) const override { return obj.get(MyState); }
-};
-
 class MyObject : public Object {
 public:
     int val;
@@ -19,27 +9,25 @@ public:
         event<MyObject>();
     }
 
-
-
     void mouseDrag(const MouseDrag& e) {
-        r = e.pos[0];
-        std::cout << val << ": Mouse Dragged! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+        r = e.pos.x();
+        std::cout << val << ": Mouse Dragged! (" << e.pos.x() << ", " << e.pos.y() << ") [" << Key::ToString(e.mod | 'a') << "]\n";
     }
 
     void mousePress(const MousePress& e) {
-        std::cout << val << ": Mouse Pressed! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+        std::cout << val << ": Mouse Pressed! (" << e.pos.x() << ", " << e.pos.y() << ") [" << Key::ToString(e.mod | 'a') << "]\n";
     }
     
     void mouseClick(const MouseClick& e) {
-        std::cout << val << ": Mouse Clicked! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+        std::cout << val << ": Mouse Clicked! (" << e.pos.x() << ", " << e.pos.y() << ") [" << Key::ToString(e.mod | 'a') << "]\n";
     }
 
     void mouseRelease(const MouseRelease& e) {
-        std::cout << val << ": Mouse Released! (" << e.pos[0] << ", " << e.pos[1] << ") [" << Key::ToString(e.mod | 'a') << "]\n";
+        std::cout << val << ": Mouse Released! (" << e.pos.x() << ", " << e.pos.y() << ") [" << Key::ToString(e.mod | 'a') << "]\n";
     }
 
     void mouseWheel(const MouseWheel& e) {
-        std::cout << val << ": Mouse Wheel! (" << e.pos[0] << ", " << e.pos[1] << ") " << e.amount << " [" << Key::ToString(e.mod | 'a') << "]\n";
+        std::cout << val << ": Mouse Wheel! (" << e.pos.x() << ", " << e.pos.y() << ") " << e.amount << " [" << Key::ToString(e.mod | 'a') << "]\n";
     }
 
     void focus(const Focus& e) {
@@ -57,11 +45,16 @@ public:
     void mouseExit(const MouseExit& e) {
         std::cout << val << ": Exit!\n";
     }
+
     float r = 0;
     void draw(DrawContext& context) const override {
         float c = get(Hovering) * 100 + 100;
-        context.fill({ Color{ val == 0 || val == 3 ? c : 0, val == 1 || val == 3 ? c : 0, val == 2 ? c : 0, 255.f } });
+        context.fill({ val == 0 || val == 3 ? c : 0, val == 1 || val == 3 ? c : 0, val == 2 ? c : 0, 255.f });
         context.rect({ .rect = dimensions(), .radius = 50.f + r });
+        context.fill({ 255, 255, 255 });
+        context.font(Font::Default);
+        context.textAlign(Align::Center);
+        context.text("test", { x() + width() / 2, y() + height() / 2 });
     }
 };
 
@@ -76,7 +69,6 @@ int main() {
     Object& container = window.emplace<Object>();
 
     container.dimensions({ 0, 0, 500, 500 });
-    container.set(MyState);
 
     auto& c1 = container.emplace<MyObject>(0);
     auto& c2 = container.emplace<MyObject>(1);

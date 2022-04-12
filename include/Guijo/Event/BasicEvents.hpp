@@ -14,16 +14,16 @@ namespace Guijo {
     using MouseButtons = std::uint8_t;
 
     struct MouseMove : Event {
-        MouseMove(Vec2<float> pos) : pos(pos) {}
-        Vec2<float> pos{}; // New mouse position
+        MouseMove(Point<float> pos) : pos(pos) {}
+        Point<float> pos{}; // New mouse position
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseDrag : Event {
-        MouseDrag(Vec2<float> source, Vec2<float> pos, MouseButtons buttons, KeyMod mod)
+        MouseDrag(Point<float> source, Point<float> pos, MouseButtons buttons, KeyMod mod)
             : source(source), pos(pos), buttons(buttons), mod(mod) {}
-        Vec2<float> source;   // Press position of cursor
-        Vec2<float> pos;      // Position of cursor
+        Point<float> source;   // Press position of cursor
+        Point<float> pos;      // Position of cursor
         MouseButtons buttons; // Buttons held down
         KeyMod mod;           // Key mods
         bool forward(const Object& c) const override { return c.get(Pressed); };
@@ -46,36 +46,36 @@ namespace Guijo {
     };
 
     struct MousePress : Event {
-        MousePress(Vec2<float> pos, MouseButton button, KeyMod mod)
+        MousePress(Point<float> pos, MouseButton button, KeyMod mod)
             : pos(pos), button(button), mod(mod) {}
-        Vec2<float> pos;    // Position of press
+        Point<float> pos;    // Position of press
         MouseButton button; // Button pressed
         KeyMod mod;         // Key mods
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseClick : Event {
-        MouseClick(Vec2<float> pos, MouseButton button, KeyMod mod)
+        MouseClick(Point<float> pos, MouseButton button, KeyMod mod)
             : pos(pos), button(button), mod(mod) {}
-        Vec2<float> pos;    // Position of click
+        Point<float> pos;    // Position of click
         MouseButton button; // Button used to click
         KeyMod mod;         // Key mods
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseWheel : public Event {
-        MouseWheel(Vec2<float> pos, int amount, KeyMod mod)
+        MouseWheel(Point<float> pos, int amount, KeyMod mod)
             : pos(pos), amount(amount), mod(mod) {}
-        Vec2<float> pos;     // Cursor position when mousewheel was used
+        Point<float> pos;     // Cursor position when mousewheel was used
         std::int16_t amount; // Amount the mousewheel was used
         KeyMod mod;          // Key mods
         bool forward(const Object& c) const override { return c.get(Hovering); };
     };
 
     struct MouseRelease : Event {
-        MouseRelease(Vec2<float> pos, MouseButton button, KeyMod mod)
+        MouseRelease(Point<float> pos, MouseButton button, KeyMod mod)
             : pos(pos), button(button), mod(mod) {}
-        Vec2<float> pos;    // Position of the cursor
+        Point<float> pos;    // Position of the cursor
         MouseButton button; // Button that was released
         KeyMod mod;         // Key mods
         bool forward(const Object& c) const override { return c.get(Focused); };
@@ -107,16 +107,10 @@ namespace Guijo {
         bool forward(const Object& c) const override { return true; };
     };
 
-    inline bool operator ==(const KeyPress& a, KeyCode b) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(const KeyPress&& a, KeyCode b) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(const KeyRelease& a, KeyCode b) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(const KeyRelease&& a, KeyCode b) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(const KeyType& a, KeyCode b) { return (a.key | a.mod) == b; }
-    inline bool operator ==(const KeyType&& a, KeyCode b) { return (a.key | a.mod) == b; }
-    inline bool operator ==(KeyCode b, const KeyPress& a) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(KeyCode b, const KeyPress&& a) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(KeyCode b, const KeyRelease& a) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(KeyCode b, const KeyRelease&& a) { return (a.keycode | a.mod) == b; }
-    inline bool operator ==(KeyCode b, const KeyType& a) { return (a.key | a.mod) == b; }
-    inline bool operator ==(KeyCode b, const KeyType&& a) { return (a.key | a.mod) == b; }
+    constexpr bool operator==(const KeyPress& a, KeyCode b) { return (a.keycode | a.mod) == b; }
+    constexpr bool operator==(const KeyRelease& a, KeyCode b) { return (a.keycode | a.mod) == b; }
+    constexpr bool operator==(const KeyType& a, KeyCode b) { return (a.key | a.mod) == b; }
+    constexpr bool operator==(KeyCode b, const KeyPress& a) { return (a.keycode | a.mod) == b; }
+    constexpr bool operator==(KeyCode b, const KeyRelease& a) { return (a.keycode | a.mod) == b; }
+    constexpr bool operator==(KeyCode b, const KeyType& a) { return (a.key | a.mod) == b; }
 }

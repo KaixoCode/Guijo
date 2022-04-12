@@ -9,8 +9,8 @@ namespace Guijo {
     struct Event {
         virtual bool forward(const Object&) const = 0;
 
-        void handle() const { m_Handled = true; }
-        bool handled() const { return m_Handled; }
+        constexpr void handle() const { m_Handled = true; }
+        constexpr bool handled() const { return m_Handled; }
 
     private:
         mutable bool m_Handled = false;
@@ -20,8 +20,7 @@ namespace Guijo {
         virtual void handle(Object&, const Event&) const = 0;
     };
 
-    template<auto Fun>
-    struct TypedEventHandler : public EventHandler {
+    template<auto Fun> struct TypedEventHandler : public EventHandler {
         void handle(Object& self, const Event& e) const override {
             using signature = detail::signature_t<decltype(Fun)>;
             using args = detail::function_args_t<signature>;
@@ -51,8 +50,7 @@ namespace Guijo {
         virtual bool handle(Object&, const Event&, Object&, std::size_t) const = 0;
     };
 
-    template<auto Fun>
-    struct TypedStateHandler : public StateHandler {
+    template<auto Fun> struct TypedStateHandler : public StateHandler {
         const std::size_t state{};
         TypedStateHandler(std::size_t state) : state(state) {}
         bool handle(Object& self,

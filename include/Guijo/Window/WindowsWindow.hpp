@@ -13,16 +13,16 @@ namespace Guijo {
 		float y() const override;
 		float width() const override;
 		float height() const override;
-		Vec2<float> pos() const override;
-		Vec2<float> size() const override; 
-		Vec4<float> dimensions() const override; 
+		Point<float> pos() const override;
+		Point<float> size() const override;
+		Dimensions<float> dimensions() const override;
 		void x(const float& v) override;
 		void y(const float& v) override;
 		void width(const float& v) override;
 		void height(const float& v) override;
-		void pos(const Vec2<float>& v) override;
-		void size(const Vec2<float>& v) override;
-		void dimensions(const Vec4<float>& v) override;
+		void pos(const Point<float>& v) override;
+		void size(const Point<float>& v) override;
+		void dimensions(const Dimensions<float>& v) override;
 	
 	private:
 		friend class Gui;

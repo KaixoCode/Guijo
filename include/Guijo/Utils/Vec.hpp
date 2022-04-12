@@ -99,15 +99,86 @@ namespace std {
 }
 
 namespace Guijo {
+    template<class Ty> requires (std::integral<Ty> || std::floating_point<Ty>) 
+    class Dimensions;
+    template<class Ty> requires (std::integral<Ty> || std::floating_point<Ty>)
+    class Point {
+    public:
+        constexpr Point() : data{ 0, 0 } {};
+        constexpr Point(auto x, auto y) : data{ static_cast<Ty>(x), static_cast<Ty>(y) } {}
+        constexpr Point(const Vec2<Ty>& p) : data{ p } {}
+
+        constexpr virtual Ty x() const { return data[0]; }
+        constexpr virtual Ty y() const { return data[1]; }
+        constexpr virtual Ty width() const { return data[0]; }
+        constexpr virtual Ty height() const { return data[1]; }
+        constexpr virtual operator Vec2<Ty>() const { return data; }
+        constexpr virtual void x(const Ty& v) { data[0] = v; }
+        constexpr virtual void y(const Ty& v) { data[1] = v; }
+        constexpr virtual void width(const Ty& v) { data[0] = v; }
+        constexpr virtual void height(const Ty& v) { data[1] = v; }
+
+        constexpr virtual bool inside(const Dimensions<Ty>& v) const {
+            return x() >= v.left() && x() <= v.right() && y() >= v.top() && y() <= v.bottom();
+        }
+
+        template<size_t I> requires (I < 2) constexpr auto& get()& { return data[I]; }
+        template<size_t I> requires (I < 2) constexpr auto const& get() const& { return data[I]; }
+        template<size_t I> requires (I < 2) constexpr auto&& get()&& { return std::move(data[I]); }
+
+        template<class T> constexpr Point operator+(const T& o) const { return data + 0; }
+        template<class T> constexpr Point operator-(const T& o) const { return data - 0; }
+        template<class T> constexpr Point operator*(const T& o) const { return data * 0; }
+        template<class T> constexpr Point operator/(const T& o) const { return data / 0; }
+        template<class T> constexpr Point operator%(const T& o) const { return data % 0; }
+        template<class T> constexpr Point operator&(const T& o) const { return data & 0; }
+        template<class T> constexpr Point operator|(const T& o) const { return data | 0; }
+        template<class T> constexpr Point operator^(const T& o) const { return data ^ 0; }
+
+        template<class T> constexpr Point& operator+=(const T& o) { data += o; return *this; }
+        template<class T> constexpr Point& operator-=(const T& o) { data -= o; return *this; }
+        template<class T> constexpr Point& operator*=(const T& o) { data *= o; return *this; }
+        template<class T> constexpr Point& operator/=(const T& o) { data /= o; return *this; }
+        template<class T> constexpr Point& operator%=(const T& o) { data %= o; return *this; }
+        template<class T> constexpr Point& operator&=(const T& o) { data &= o; return *this; }
+        template<class T> constexpr Point& operator|=(const T& o) { data |= o; return *this; }
+        template<class T> constexpr Point& operator^=(const T& o) { data ^= o; return *this; }
+
+        template<class T> constexpr Point& operator=(const T& o) { data = o; return *this; }
+        template<class T> constexpr bool operator==(const T& o) const { return data == o; }
+        template<class T> constexpr bool operator!=(const T& o) const { return data != o; }
+
+    private:
+        Vec2<Ty> data;
+    };
+}
+
+namespace std {
+    template<class Ty>
+    struct tuple_size<Guijo::Point<Ty>> : std::integral_constant<size_t, 2> { };
+    template<std::size_t N, class Ty> requires (N < 2)
+        struct tuple_element<N, Guijo::Point<Ty>> { using type = Ty; };
+}
+
+namespace Guijo {
     template<class Ty> requires (std::integral<Ty> || std::floating_point<Ty>)
     class Dimensions {
     public:
         using value_type = Ty;
 
         constexpr Dimensions() : data{ 0, 0, 0, 0 } {};
-        constexpr Dimensions(const Ty& x, const Ty& y, const Ty& w, const Ty& h) : data{ x, y, w, h } {}
         constexpr Dimensions(const Vec2<Ty>& p, const Vec2<Ty>& s) : data{ p[0], p[1], s[0], s[1] } {}
         constexpr Dimensions(const Vec4<Ty>& d) : data(d) {}
+        constexpr Dimensions(auto v)
+            : data{ static_cast<Ty>(v), static_cast<Ty>(v), static_cast<Ty>(v), static_cast<Ty>(v) } {}
+        constexpr Dimensions(auto x, auto y, auto w, auto h)
+            : data{ static_cast<Ty>(x), static_cast<Ty>(y), static_cast<Ty>(w), static_cast<Ty>(h) } {}
+        constexpr Dimensions(auto x, auto y, const Vec2<Ty>& p)
+            : data{ static_cast<Ty>(x), static_cast<Ty>(y), p[0], p[1] } {}
+        constexpr Dimensions(auto x, const Vec2<Ty>& p, auto h)
+            : data{ static_cast<Ty>(x), p[0], p[1], static_cast<Ty>(h) } {}
+        constexpr Dimensions(const Vec2<Ty>& p, auto w, auto h)
+            : data{ p[0], p[1], static_cast<Ty>(w), static_cast<Ty>(h) } {}
 
         constexpr virtual Ty x() const { return data[0]; }
         constexpr virtual Ty y() const { return data[1]; }
@@ -117,9 +188,9 @@ namespace Guijo {
         constexpr virtual Ty top() const { return y(); }
         constexpr virtual Ty right() const { return x() + width(); }
         constexpr virtual Ty bottom() const { return y() + height(); }
-        constexpr virtual Vec2<Ty> pos() const { return { x(), y() }; }
-        constexpr virtual Vec2<Ty> size() const { return { width(), height() }; }
-        constexpr virtual Vec4<Ty> dimensions() const { return data; }
+        constexpr virtual Point<Ty> pos() const { return { x(), y() }; }
+        constexpr virtual Point<Ty> size() const { return { width(), height() }; }
+        constexpr virtual Dimensions<Ty> dimensions() const { return data; }
         constexpr virtual operator Vec4<Ty>() const { return data; }
         constexpr virtual void x(const Ty& v) { data[0] = v; }
         constexpr virtual void y(const Ty& v) { data[1] = v; }
@@ -129,27 +200,52 @@ namespace Guijo {
         constexpr virtual void top(const Ty& v) { y(v); }
         constexpr virtual void right(const Ty& v) { width(v - x()); }
         constexpr virtual void bottom(const Ty& v) { height(v - y()); }
-        constexpr virtual void pos(const Vec2<Ty>& v) { x(v[0]), y(v[1]); }
-        constexpr virtual void size(const Vec2<Ty>& v) { width(v[0]), height(v[1]); }
-        constexpr virtual void dimensions(const Vec4<Ty>& v) { data = v; }
-        constexpr virtual bool inside(const Vec2<Ty>& v) const {
-            auto& [_x, _y] = v;
-            return _x >= left() && _x <= right() && _y >= top() && _y <= bottom();
+        constexpr virtual void pos(const Point<Ty>& v) { x(v.x()), y(v.y()); }
+        constexpr virtual void size(const Point<Ty>& v) { width(v.width()), height(v.height()); }
+        constexpr virtual void dimensions(const Dimensions<Ty>& v) { data = v; }
+
+        constexpr virtual Ty centerX() const { return data[0] + data[2] / 2; }
+        constexpr virtual Ty centerY() const { return data[1] + data[3] / 2; }
+        constexpr virtual Point<Ty> center() const { return { centerX(), centerY() }; }
+        constexpr virtual Point<Ty> topLeft() const { return { left(), top() }; }
+        constexpr virtual Point<Ty> topRight() const { return { right(), top() }; }
+        constexpr virtual Point<Ty> bottomLeft() const { return { left(), bottom() }; }
+        constexpr virtual Point<Ty> bottomRight() const { return { right(), bottom() }; }
+        constexpr virtual Point<Ty> topCenter() const { return { centerX(), top() }; }
+        constexpr virtual Point<Ty> bottomCenter() const { return { centerX(), bottom() }; }
+        constexpr virtual Point<Ty> leftCenter() const { return { left(), centerY() }; }
+        constexpr virtual Point<Ty> rightCenter() const { return { right(), centerY() }; }
+
+        constexpr virtual bool contains(const Point<Ty>& v) const {
+            return v.x() >= left() && v.x() <= right() && v.y() >= top() && v.y() <= bottom();
         }
-        constexpr Dimensions overlaps(const Dimensions& o) const {
-            if (width() == -1 || height() == -1)
-                return o;
-            Ty x5 = std::max(x(), o.x());
-            Ty y5 = std::max(y(), o.y());
-            Ty x6 = std::min(x() + width(), o.x() + o.width());
-            Ty y6 = std::min(y() + height(), o.y() + o.height());
-            if (x5 > x6 || y5 > y6)
-                return { 0, 0, 0, 0 };
-            return { x5, y5, x6 - x5, y6 - y5 };
+
+        constexpr virtual Dimensions translate(const Point<Ty>& v) const {
+            return { x() - v.x(), y() - v.y(), width(), height() };
+        }
+
+        constexpr virtual Dimensions overlap(const Dimensions& o) const {
+            if (width() == -1 || height() == -1) return o;
+            const Ty x1 = std::max(x(), o.x());
+            const Ty y1 = std::max(y(), o.y());
+            const Ty x2 = std::min(x() + width(), o.x() + o.width());
+            const Ty y2 = std::min(y() + height(), o.y() + o.height());
+            if (x1 > x2 || y1 > y2) return { 0, 0, 0, 0 };
+            else return { x1, y1, x2 - x1, y2 - y1 };
+        }
+
+        constexpr virtual bool overlaps(const Dimensions& o) const {
+            if (width() == -1 || height() == -1) return false;
+            const Ty x1 = std::max(x(), o.x());
+            const Ty y1 = std::max(y(), o.y());
+            const Ty x2 = std::min(x() + width(), o.x() + o.width());
+            const Ty y2 = std::min(y() + height(), o.y() + o.height());
+            if (x1 > x2 || y1 > y2) return true;
+            else return false;
         }
 
         template<size_t I> requires (I < 4) constexpr auto& get()& { return data[I]; }
-        template<size_t I> requires (I < 4) constexpr auto const& get() const& { data[I]; }
+        template<size_t I> requires (I < 4) constexpr auto const& get() const& { return data[I]; }
         template<size_t I> requires (I < 4) constexpr auto&& get()&& { return std::move(data[I]); }
 
         template<class T> constexpr Dimensions operator+(const T& o) const { return data + 0; }

@@ -3,12 +3,14 @@
 
 using namespace Guijo;
 
-void GraphicsBase::render(DrawContext& context) {
+std::map<std::string, Guijo::Font, std::less<>> GraphicsBase::Fonts{};
+
+void GraphicsBase::render() {
     auto& commands = context.m_Commands;
 
     // Make sure clip is entire window at start
-    m_Clip = { -1, -1, m_Size[0] + 2, m_Size[1] + 2 };
-    Command<Clip> _clip{ m_Clip };
+    clip = { -1, -1, windowSize.width() + 2, windowSize.height() + 2};
+    Command<Clip> _clip{ clip };
     runCommand(_clip);
 
     while (!commands.empty()) {
@@ -18,68 +20,47 @@ void GraphicsBase::render(DrawContext& context) {
     }
 }
 
-bool GraphicsBase::loadFont(const std::string& name) {
-    using namespace std::string_literals;
-    TCHAR szPath[MAX_PATH];
-    SHGetFolderPathA(nullptr, CSIDL_FONTS, nullptr, 0, szPath);
-
-    std::string _noExtension = szPath;
-    _noExtension += "/"s + name;
-    std::filesystem::path _font = _noExtension + ".ttf";
-
-    if (std::filesystem::exists(_font)) {
-        char* _name = new char[name.size() + 1];
-        for (int i = 0; i < name.size(); i++)
-            _name[i] = name[i];
-        _name[name.size()] = '\0';
-        m_Fonts.emplace(_name, Guijo::FontType{ _font.string() });
-        return true;
-    } else return false;
+void GraphicsBase::dimensions(const Dimensions<float>& dims) {
+    projection = glm::ortho(0.0f, std::max(dims.width(), 5.f), 0.0f, std::max(dims.height(), 5.f));
+    viewProjection = projection * matrix;
+    windowSize = dims;
 }
 
-void GraphicsBase::loadFont(const std::string& path, const std::string& name) {
-    m_Fonts.emplace(name, Guijo::FontType{ path });
+void GraphicsBase::runCommand(Command<Fill>& v) {
+    fill = v.color / 256;
 }
 
-void GraphicsBase::runCommand(Command<Translate>& v) {
-    m_Matrix = glm::translate(m_Matrix, glm::vec3(v.translate[0], v.translate[1], 0));
-    m_ViewProj = m_Projection * m_Matrix;
+void GraphicsBase::runCommand(Command<FontSize>& v) {
+    fontSize = v.size;
 }
 
-void GraphicsBase::scale(Vec2<float> v) {
-    m_Matrix = glm::scale(m_Matrix, glm::vec3(v[0], v[1], 1.));
-    m_ViewProj = m_Projection * m_Matrix;
-}
-
-void GraphicsBase::runCommand(Command<PushMatrix>&) {
-    m_MatrixStack.push(m_Matrix);
-}
-
-void GraphicsBase::runCommand(Command<PopMatrix>&) {
-    if (m_MatrixStack.size() > 1) {
-        m_Matrix = m_MatrixStack.top();
-        m_MatrixStack.pop();
-        m_ViewProj = m_Projection * m_Matrix;
+void GraphicsBase::runCommand(Command<SetFont>& v) {
+    auto _it = Fonts.find(v.font);
+    if (_it != Fonts.end())
+        currentFont = &_it->second;
+    else {
+        if (Font::load(v.font))
+            currentFont = &Fonts.find(v.font)->second;
     }
 }
 
-void GraphicsBase::dimensions(const Dimensions<float>& dims) {
-    m_Projection = glm::ortho(0.0f, std::max(dims.width(), 5.f), 0.0f, std::max(dims.height(), 5.f));
-    m_ViewProj = m_Projection * m_Matrix;
-    m_Size[0] = 2 / m_Projection[0][0];
-    m_Size[1] = 2 / m_Projection[1][1];
+void GraphicsBase::runCommand(Command<TextAlign>& v) {
+    textAlign = v.align;
 }
 
-float GraphicsBase::charWidth(const char c, const std::string_view& font, float size) {
-    if (!m_Fonts.contains(font)) return 0;
-    return (*m_Fonts.find(font)).second.Size(size).Char(c).advance >> 6;
+void GraphicsBase::runCommand(Command<Translate>& v) {
+    matrix = glm::translate(matrix, glm::vec3(v.translate.x(), v.translate.y(), 0));
+    viewProjection = projection * matrix;
 }
 
-float GraphicsBase::stringWidth(const std::string_view& c, const std::string_view& font, float size) {
-    if (!m_Fonts.contains(font)) return 0;
-    float _width = 0;
-    auto& _font = (*m_Fonts.find(font)).second.Size(size);
-    for (auto& _c : c)
-        _width += _font.Char(_c).advance >> 6;
-    return _width;
+void GraphicsBase::runCommand(Command<PushMatrix>&) {
+    matrixStack.push(matrix);
+}
+
+void GraphicsBase::runCommand(Command<PopMatrix>&) {
+    if (matrixStack.size() > 1) {
+        matrix = matrixStack.top();
+        matrixStack.pop();
+        viewProjection = projection * matrix;
+    }
 }
