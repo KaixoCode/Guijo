@@ -20,11 +20,6 @@ namespace Guijo {
 	private:
 		static inline HGLRC current = nullptr;
 	    HGLRC m_Context = nullptr;
-		enum class Shaders {
-			None, RectShader1, RectShader2, LineShader, EllipseShader,
-			TriangleShader, TextShader,
-		};
-		Shaders m_PreviousShader = Shaders::None;
 
 #ifdef WIN32
 		HDC m_Device = nullptr;

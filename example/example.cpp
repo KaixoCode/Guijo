@@ -69,8 +69,10 @@ public:
         context.strokeWeight(p[4]);
         //context.rect(dimensions().inset(100, 150), { p[1], p[2], p[3], p[4] }, p[5]);
         //context.circle(center(), 100.f, { p[1] / 100.f, p[2] / 100.f });
+        //context.line({ p[0], p[1] }, { p[2], p[3] }, static_cast<StrokeCap>(p[5]));
         
-        context.line({ p[0], p[1] }, { p[2], p[3] }, static_cast<StrokeCap>(p[5]));
+        context.triangle(center(), { p[0], p[1] }, { p[2], p[3] });
+
         context.fill({ 255, 255, 255 });
         context.font(Font::Default);
         context.textAlign(Align::Center);

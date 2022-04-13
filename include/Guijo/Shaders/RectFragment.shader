@@ -27,8 +27,7 @@ void main() {
 	// Smooth the result (free antialiasing).
 	float smoothedAlpha = 1.0f - smoothstep(0.0f, edgeSoftness, distance);
 	// Border.  
-	float borderSoftness = 1.0f;
-	float borderAlpha = 1.0f - smoothstep(strokeWeight - borderSoftness, strokeWeight, abs(distance));
+	float borderAlpha = 1.0f - smoothstep(strokeWeight - edgeSoftness, strokeWeight, abs(distance));
 	vec4 bgColor = vec4(stroke.xyz, 0.0f);
 	if (strokeWeight == 0) bgColor = vec4(fill.xyz, 0.0f);
 	vec4 fillColor = fill;

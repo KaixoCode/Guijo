@@ -3,7 +3,7 @@ LOAD_AS_STRING(
 out vec4 fragColor;
 uniform vec4 color;
 uniform vec2 length;
-uniform float type;
+uniform int type;
 
 in vec2 fragCoord;
 
@@ -25,23 +25,26 @@ void main() {
 	float edgeSoftness = 0.5f;
 	float width = length.y - edgeSoftness;
 	float dist = 0;
-	if (type == 0) {
+	switch (type) {
+	case 0: {// Rounded cap
 		float len = length.x / 2.f - length.y / 2.f;
 		dist = minimum_distance(vec2(-len, 0.f), vec2(len, 0.f), fragCoord.xy);
-	} else if (type == 1) {
+		break;
+	}
+	case 1: { // Square cap
 		float len = length.x / 2.f;
 		dist = minimum_distance(vec2(-len, 0.f), vec2(len, 0.f), fragCoord.xy);
 		float edgeDist = abs(fragCoord.x) - len + length.y / 2.f;
-		if (edgeDist > 0.f) {
-			dist = max(edgeDist, dist);
-		}
-	} else if (type == 2) {
+		if (edgeDist > 0.f) dist = max(edgeDist, dist);
+		break;
+	}
+	case 2: { // Projected cap
 		float len = length.x / 2.f - length.y / 2.f;
 		dist = minimum_distance(vec2(-len, 0.f), vec2(len, 0.f), fragCoord.xy);
 		float edgeDist = abs(fragCoord.x) - len + length.y / 2.f;
-		if (edgeDist > 0.f) {
-			dist = max(edgeDist, dist);
-		}
+		if (edgeDist > 0.f) dist = max(edgeDist, dist);
+		break;
+	}
 	}
 	float smoothedAlpha = smoothstep(-edgeSoftness, edgeSoftness, dist - width / 2.0f);
 	vec4 fillColor = color;

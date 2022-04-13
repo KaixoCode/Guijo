@@ -53,7 +53,7 @@ namespace Guijo {
 	template<> struct Command<Rect> { Dimensions<float> dimensions; Dimensions<float> radius = 0; float rotation = 0;  };
 	template<> struct Command<Line> { Point<float> start; Point<float> end; StrokeCap cap = StrokeCap::Round; };
 	template<> struct Command<Circle> { Point<float> center; float radius; Point<float> angles{ 0, 0 };  };
-	template<> struct Command<Triangle> { Dimensions<float> dimensions; float rotation = 0; };
+	template<> struct Command<Triangle> { Point<float> a; Point<float> b; Point<float> c; };
 	template<> struct Command<Text> { std::string_view text; Point<float> pos; };
 	template<> struct Command<FontSize> { float size; };
 	template<> struct Command<SetFont> { std::string_view font; };
@@ -127,8 +127,8 @@ namespace Guijo {
 			m_Commands.emplace(Command<Circle>{ center, radius, angles });
 		}
 
-		void triangle(const Dimensions<float>& triangle, float rotation = 0) {
-			m_Commands.emplace(Command<Triangle>{ triangle, rotation });
+		void triangle(const Point<float>& a, const Point<float> b, const Point<float> c) {
+			m_Commands.emplace(Command<Triangle>{ a, b, c });
 		}
 
 		void text(std::string_view text, const Point<float>& pos) { 

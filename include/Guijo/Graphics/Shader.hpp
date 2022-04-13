@@ -5,13 +5,14 @@
 namespace Guijo {
 #ifdef USE_OPENGL
     class Shader {
+        static inline unsigned int current = static_cast<unsigned int>(-1);
     public:
         unsigned int ID;
 
         Shader(std::string_view vertex, std::string_view frag, std::string_view geo = "");
 
         inline void Clean() const { glDeleteProgram(ID); };
-        inline void Use() const { glUseProgram(ID); };
+        inline bool Use() const { if (current != ID) { glUseProgram(ID), current = ID; return true; } else return false; };
         inline void SetBool(GLint n, bool v) const { glUniform1i(n, (int)v); };
         inline void SetInt(GLint n, int v) const { glUniform1i(n, v); };
         inline void SetFloat(GLint n, float v) const { glUniform1f(n, v); };

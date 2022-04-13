@@ -102,10 +102,10 @@ void Graphics::createBuffers() {
 		glEnableVertexAttribArray(0);
 	}
 	{	// Triangle
-		float _vertices[] = { 
-			-0.5f, -0.5f, 
-			 0.5f,  0.0f, 
-			-0.5f,  0.5f 
+		float _vertices[] = {
+			0.0f, 0.0f, 1.0f, 0.0f,
+			0.0f, 1.0f, 1.0f, 0.0f,
+			1.0f, 1.0f, 0.0f, 1.0f,
 		};
 
 		glGenVertexArrays(1, &triangle.vao);
@@ -218,11 +218,7 @@ void Graphics::runCommand(Command<Rect>& v) {
 	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
 	static const GLint uf_radius = glGetUniformLocation(_shader.ID, "radius");
 
-	if (m_PreviousShader != Shaders::RectShader1) {
-		_shader.Use();
-		glBindVertexArray(quad.vao);
-		m_PreviousShader = Shaders::RectShader1;
-	}
+	if (_shader.Use()) glBindVertexArray(quad.vao);
 
 	// Adjust 1 pixel for Anti-Aliasing.
 	glm::vec4 _dim{ dim.x() - 1, dim.y() - 1, dim.width() + 2, dim.height() + 2 };
@@ -247,6 +243,8 @@ void Graphics::runCommand(Command<Rect>& v) {
 }
 
 void Graphics::runCommand(Command<Line>& v) {
+	// Line is basically drawn as a rotated rectangle, with
+	// special cases for both ends.
 	auto& [start, end, cap] = v;
 	start.y(windowSize.height() - start.y()); // Flip y
 	end.y(windowSize.height() - end.y()); // Flip y
@@ -260,20 +258,17 @@ void Graphics::runCommand(Command<Line>& v) {
 	static const GLint uf_type = glGetUniformLocation(_shader.ID, "type");
 	static const GLint uf_color = glGetUniformLocation(_shader.ID, "color");
 
-	if (m_PreviousShader != Shaders::LineShader) {
-		_shader.Use();
-		glBindVertexArray(line.vao);
-		m_PreviousShader = Shaders::LineShader;
-	}
+	_shader.Use();
+	glBindVertexArray(line.vao);
 
-	float thickness = strokeWeight / scaling;
+	const float thickness = strokeWeight / scaling;
 
-	auto middle = start.to(end, 0.5);
-	auto length = start.distance(end);
+	const auto middle = start.to(end, 0.5);
+	const auto length = start.distance(end);
 	
-	float delta_x = end.x() - start.x();
-	float delta_y = end.y() - start.y();
-	float angle = std::atan2(delta_y, delta_x);
+	const float delta_x = end.x() - start.x();
+	const float delta_y = end.y() - start.y();
+	const float angle = std::atan2(delta_y, delta_x);
 
 	glm::mat4 _model{ 1.0f };
 	_model = glm::translate(_model, glm::vec3{ middle.x(), middle.y(), 0.f});
@@ -283,7 +278,7 @@ void Graphics::runCommand(Command<Line>& v) {
 	_shader.SetMat4(uf_mvp, viewProjection * _model);
 	_shader.SetVec2(uf_length, glm::vec2(length + thickness, thickness));
 	_shader.SetVec4(uf_color, stroke);
-	_shader.SetFloat(uf_type, static_cast<float>(cap));
+	_shader.SetInt(uf_type, static_cast<int>(cap));
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -303,11 +298,7 @@ void Graphics::runCommand(Command<Circle>& v) {
 	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
 	static const GLint uf_angles = glGetUniformLocation(_shader.ID, "angles");
 
-	if (m_PreviousShader != Shaders::EllipseShader) {
-		_shader.Use();
-		glBindVertexArray(ellipse.vao);
-		m_PreviousShader = Shaders::EllipseShader;
-	}
+	if (_shader.Use()) glBindVertexArray(ellipse.vao);
 
 	glm::vec4 _dim{ center.x(), center.y(), 2 * radius + 2, 2 * radius + 2 };
 	glm::mat4 _model{ 1.0f };
@@ -320,14 +311,12 @@ void Graphics::runCommand(Command<Circle>& v) {
 	_shader.SetVec4(uf_strokeColor, stroke);
 	_shader.SetFloat(uf_strokeWeight, strokeWeight);
 
-	constexpr auto PI = std::numbers::pi_v<double>;
-
 	if (angles.x() == 0 && angles.y() == 0)
-		_shader.SetVec2(uf_angles, { 0, PI * 2 });
+		_shader.SetVec2(uf_angles, { 0, std::numbers::pi_v<double> * 2 });
 	else {
 		_shader.SetVec2(uf_angles, {
-			std::fmod(angles.y() + 4.0 * PI, 2.0 * PI),
-			std::fmod(angles.x() + 4.0 * PI, 2.0 * PI)
+			std::fmod(angles.y() + 4.0 * std::numbers::pi_v<double>, 2.0 * std::numbers::pi_v<double>),
+			std::fmod(angles.x() + 4.0 * std::numbers::pi_v<double>, 2.0 * std::numbers::pi_v<double>)
 		});
 	}
 
@@ -335,138 +324,124 @@ void Graphics::runCommand(Command<Circle>& v) {
 }
 
 void Graphics::runCommand(Command<Triangle>& v) {
-	auto& [dim, rotation] = v;
+	auto& [a, b, c] = v;
+	a.y(windowSize.height() - a.y()); // Flip y
+	b.y(windowSize.height() - b.y()); // Flip y
+	c.y(windowSize.height() - c.y()); // Flip y
 
 	static const Shader _shader {
-		R"~~(
-		#version 330 core 
-		layout(location = 0) in vec2 aPos; 
-		uniform mat4 projection; 
-		uniform mat4 view; 
-		uniform mat4 model; 
-		void main() { 
-		    gl_Position = projection * view * model * vec4(aPos, 0.0, 1.0); 
-		}
-		)~~",
-		R"~~(
-		#version 330 core 
-		out vec4 FragColor; 
-		uniform vec4 color; 
-		void main() { 
-		    FragColor = color; 
-		}
-		)~~"
+#include <Guijo/Shaders/TriangleVertex.shader>
+#include <Guijo/Shaders/TriangleFragment.shader>
 	};
-	static const GLint model = glGetUniformLocation(_shader.ID, "model");
-	static const GLint view = glGetUniformLocation(_shader.ID, "view");
-	static const GLint proj = glGetUniformLocation(_shader.ID, "projection");
-	static const GLint color = glGetUniformLocation(_shader.ID, "color");
+	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
+	static const GLint uf_size = glGetUniformLocation(_shader.ID, "size");
+	static const GLint uf_a = glGetUniformLocation(_shader.ID, "a");
+	static const GLint uf_b = glGetUniformLocation(_shader.ID, "b");
+	static const GLint uf_c = glGetUniformLocation(_shader.ID, "c");
+	static const GLint uf_fill = glGetUniformLocation(_shader.ID, "fill");
+	static const GLint uf_stroke = glGetUniformLocation(_shader.ID, "stroke");
+	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
 
-	if (m_PreviousShader != Shaders::TriangleShader) {
-		_shader.Use();
-		glBindVertexArray(triangle.vao);
-		m_PreviousShader = Shaders::TriangleShader;
-	}
+	if (_shader.Use()) glBindVertexArray(triangle.vao);
+
+	Point<float> _min{
+		std::min({ a.x(), b.x(), c.x() }),
+		std::min({ a.y(), b.y(), c.y() })
+	};
+
+	Point<float> _max{
+		std::max({ a.x(), b.x(), c.x() }),
+		std::max({ a.y(), b.y(), c.y() })
+	};
+
+	glm::vec4 _dim{ // Calculate the rectangle that fits the triangle
+		_min.x(), _min.y(),
+		_max.x() - _min.x(),
+		_max.y() - _min.y(),
+	};
 
 	glm::mat4 _model{ 1.0f };
-	_model = glm::translate(_model, glm::vec3{ dim.x(), dim.y() + dim.height(), 0});
-	_model = glm::scale(_model, glm::vec3{ dim.width(), dim.height(), 1});
-	if (rotation != 0) // Rotate only if necessary
-		_model = glm::rotate(_model, glm::radians(rotation), glm::vec3{ 0, 0, 1 });
+	_model = glm::translate(_model, glm::vec3{ _dim.x, _dim.y, 0.f});
+	_model = glm::scale(_model, glm::vec3{ _dim.z, _dim.w, 1 });
 
-	_shader.SetMat4(model, _model);
-	_shader.SetMat4(view, matrix);
-	_shader.SetMat4(proj, projection);
-	_shader.SetVec4(color, fill);
+	glm::vec2 _a{ a.x() - _min.x(), a.y() - _min.y() };
+	glm::vec2 _b{ b.x() - _min.x(), b.y() - _min.y() };
+	glm::vec2 _c{ c.x() - _min.x(), c.y() - _min.y() };
 
-	glDrawArrays(GL_TRIANGLES, 0, 3);
+	_shader.SetMat4(uf_mvp, viewProjection * _model);
+	_shader.SetVec2(uf_size, glm::vec2(_dim.z, _dim.w));
+	_shader.SetVec4(uf_fill, fill);
+	_shader.SetVec4(uf_stroke, stroke);
+	_shader.SetFloat(uf_strokeWeight, strokeWeight);
+	_shader.SetVec2(uf_a, _a);
+	_shader.SetVec2(uf_b, _b);
+	_shader.SetVec2(uf_c, _c);
+
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 void Graphics::runCommand(Command<Text>& v) {
 	auto& [str, pos] = v;
+	pos.y(windowSize.height() - pos.y()); // Flip y
 
 	static const Shader _shader {
-		// Vertex shader
-		R"~~(
-		#version 330 core
-		layout(location = 0) in vec2 aPos;
-		uniform vec4 dim; 
-		out vec2 texpos; 
-		void main() { 
-		    gl_Position = vec4(dim.x + aPos.x * dim.z, dim.y + aPos.y * dim.w, 0.0, 1.0); 
-		    texpos = vec2(aPos.x, 1-aPos.y); 
-		})~~",
-
-		// Fragment shader
-		R"~~(
-		#version 330 core
-	
-		out vec4 col;
-	
-		uniform vec4 color;
-		uniform sampler2DArray Texture;
-	
-		uniform int theTexture;
-		in vec2 texpos;
-	
-		void main() {
-		    vec3 sampled = texture(Texture, vec3(texpos.x, texpos.y, theTexture)).rgb;
-		    col.a = (sampled.r + sampled.g + sampled.b) / 3;
-		    col.r = sampled.r * color.r;
-		    col.g = sampled.g * color.g;
-		    col.b = sampled.b * color.b;
-		})~~",
+#include <Guijo/Shaders/TextVertex.shader>
+#include <Guijo/Shaders/TextFragment.shader>
 	};
 
-	static const GLint color = glGetUniformLocation(_shader.ID, "color");
-	static const GLint texture = glGetUniformLocation(_shader.ID, "Texture");
-	static const GLint dims = glGetUniformLocation(_shader.ID, "dim");
-	static const GLint theTexture = glGetUniformLocation(_shader.ID, "theTexture");
+	static const GLint uf_color = glGetUniformLocation(_shader.ID, "color");
+	static const GLint uf_fontmap = glGetUniformLocation(_shader.ID, "fontmap");
+	static const GLint uf_character = glGetUniformLocation(_shader.ID, "character");
+	static const GLint uf_dim = glGetUniformLocation(_shader.ID, "dim");
 
+	// No font selected, so can't render text
 	if (!currentFont) return;
 
+	// For text rendering we use a different blend function
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-	if (m_PreviousShader != Shaders::TextShader) {
-		_shader.Use();
-		glBindVertexArray(text.vao);
-		m_PreviousShader = Shaders::TextShader;
-	}
+	if (_shader.Use()) glBindVertexArray(text.vao);
 
-	auto _charMap = &currentFont->size(std::round(fontSize));
+	// Get the character map from the current font
+	auto& _charMap = currentFont->size(std::round(fontSize));
 
 	// Calculate the total width if we need it.
 	float _totalWidth = 0.0f;
 	if (textAlign & Align::Right || textAlign & Align::CenterX)
 		for (int i = 0; i < str.size(); i++)
-			_totalWidth += _charMap->character(str[i]).advance >> 6;
+			_totalWidth += _charMap.character(str[i]).advance >> 6;
 	
 	// Bind the 3d texture for this charmap
 	glActiveTexture(GL_TEXTURE0);
-	glBindTexture(GL_TEXTURE_2D_ARRAY, _charMap->texture);
-	_shader.SetVec4(color, fill);
-	_shader.SetInt(texture, 0); // We need to set the texture like this
+	glBindTexture(GL_TEXTURE_2D_ARRAY, _charMap.texture);
+	_shader.SetVec4(uf_color, fill);
+	_shader.SetInt(uf_fontmap, 0); // We need to set the texture like this
 
-	float _scale = fontSize / std::round(fontSize);
-	float x = pos.x();
-	float y = windowSize.height() - pos.y();
+	// Adjust for non-integer size
+	float _scale = fontSize / std::round(fontSize); 
+	
+	// Adjust position with vertical alignment
+	if (textAlign & Align::Middle) pos.y(pos.y() - _charMap.middle());
+	else if (textAlign & Align::TextBottom) pos.y(pos.y() - _charMap.descender());
+	else if (textAlign & Align::Baseline);
+	else pos.y(pos.y() - (_charMap.ascender() + _charMap.descender()));
 
-	// Alignment
-	if (textAlign & Align::Middle) y -= _charMap->middle();
-	else if (textAlign & Align::TextBottom) y -= _charMap->descender();
-	else if (textAlign & Align::Baseline) y;
-	else y -= _charMap->ascender() + _charMap->descender();
-	if (textAlign & Align::CenterX) x -= 0.5 * _totalWidth * _scale;
-	else if (textAlign & Align::Right) x -= _totalWidth * _scale;
+	// Adjust position with horizontal alignment
+	if (textAlign & Align::CenterX) pos.x(pos.x() - 0.5 * _totalWidth * _scale);
+	else if (textAlign & Align::Right) pos.x(pos.x() - _totalWidth * _scale);
 
-	for (int i = 0; i < str.size(); i++) {
-		char _c = str[i];
+	// Draw all the characters
+	for (char _c : str) {
+		auto& _ch = _charMap.character(_c);
 
-		auto& _ch = _charMap->character(_c);
+		// Some characters that shouldn't be drawn
+		constexpr static auto blacklist = [](char _c) {
+			return _c == ' '  || _c == '\f' || _c == '\r'
+				|| _c == '\t' || _c == '\v' || _c == '\n';
+		};
 
-		if (_c != ' ' && _c != '\f' && _c != '\r' 
-			&& _c != '\t' && _c != '\v' && _c != '\n') {
-			float _xpos = std::floor(x * matrix[0][0] + _ch.bearing.x() * _scale);
-			float _ypos = std::floor(y - (_ch.size.height() - _ch.bearing.y()) * _scale);
+		if (!blacklist(_c)) { // If character not in blacklist, draw it
+			float _xpos = std::floor(pos.x() * matrix[0][0] + _ch.bearing.x() * _scale);
+			float _ypos = std::floor(pos.y() - (_ch.size.height() - _ch.bearing.y()) * _scale);
 
 			glm::vec4 _dim;
 			_dim.x = (_xpos + matrix[3].x) * projection[0].x + projection[3].x;
@@ -474,13 +449,13 @@ void Graphics::runCommand(Command<Text>& v) {
 			_dim.z = fontSize * projection[0].x;
 			_dim.w = fontSize * projection[1].y;
 
-			_shader.SetVec4(dims, _dim);
-			_shader.SetInt(theTexture, _c);
+			_shader.SetVec4(uf_dim, _dim);
+			_shader.SetInt(uf_character, _c);
 
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}
 
-		x += (_ch.advance >> 6) * _scale;
+		pos.x(pos.x() + (_ch.advance >> 6) * _scale);
 	}
 
 	glBindTexture(GL_TEXTURE_2D, 0);
