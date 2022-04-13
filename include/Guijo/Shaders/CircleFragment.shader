@@ -59,7 +59,7 @@ void main() {
         else if ((angles.y >= 0.125f * 6.28318530718f && angles.y <= 0.375f * 6.28318530718f) && pos.y < 0.f) d2 = 100.f;
         else if ((angles.y >= 0.375f * 6.28318530718f && angles.y <= 0.625f * 6.28318530718f) && pos.x > 0.f) d2 = 100.f;
         else if ((angles.y >= 0.625f * 6.28318530718f && angles.y <= 0.875f * 6.28318530718f) && pos.y > 0.f) d2 = 100.f;
-        float cutoffAlpha = smoothstep(0.f, edgeSoftness, min(d1, d2));
+        float cutoffAlpha = smoothstep(0.f, 2.0f, min(d1, d2));
         fragColor = mix(fragColor, bgColor, cutoffAlpha);
     }
 }
