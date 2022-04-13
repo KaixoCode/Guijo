@@ -10,8 +10,22 @@ public:
     }
 
     void mouseDrag(const MouseDrag& e) {
-        int index = (e.pos.y() / 500) * 6;
-        p[index] = e.pos.x();
+        //int index = (e.pos.y() / 500) * 6;
+        //p[index] = e.pos.x();
+        if (e.pos.y() > 450)
+            p[5] = 3 * e.pos.x() / width();
+        else if (e.pos.y() > 250)
+            p[4] = e.pos.x() / 10.f;
+        else {
+            if (e.pos.x() < 250) {
+                p[0] = e.pos.x();
+                p[1] = e.pos.y();
+            }
+            else {
+                p[2] = e.pos.x();
+                p[3] = e.pos.y();
+            }
+        }
         std::cout << val << ": Mouse Dragged! (" << e.pos.x() << ", " << e.pos.y() << ") [" << Key::ToString(e.mod | 'a') << "]\n";
     }
 
@@ -52,9 +66,11 @@ public:
         float c = get(Hovering) * 50;
         context.fill({ 255, 255, 255, c });
         context.stroke({ 255, 255, 255, 255 });
-        context.strokeWeight(p[0] / 10);
+        context.strokeWeight(p[4]);
         //context.rect(dimensions().inset(100, 150), { p[1], p[2], p[3], p[4] }, p[5]);
-        context.circle(center(), 100.f, { p[1] / 100.f, p[2] / 100.f });
+        //context.circle(center(), 100.f, { p[1] / 100.f, p[2] / 100.f });
+        
+        context.line({ p[0], p[1] }, { p[2], p[3] }, static_cast<StrokeCap>(p[5]));
         context.fill({ 255, 255, 255 });
         context.font(Font::Default);
         context.textAlign(Align::Center);

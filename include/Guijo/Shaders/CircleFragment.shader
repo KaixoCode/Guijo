@@ -9,13 +9,17 @@ uniform vec4 dim;
 
 in vec2 fragCoord;
 
-float distance_point_line(vec2 P, vec2 L1, vec2 L2) {
-    float dist = distance(L1, L2);
-
-    if (dist != 0.f) 
-        return abs((L2.x - L1.x) * (L1.y - P.y) - (L1.x - P.x) * (L2.y - L1.y)) / dist;
-    else  // Points L1 and L2 are the same, choose one
-        return distance(P, L1);
+float distance_point_line(vec2 p, vec2 v, vec2 w) {
+    // Return minimum distance between line segment vw and point p
+    float l2 = pow(distance(w, v), 2);  // i.e. |w-v|^2 -  avoid a sqrt
+    if (l2 == 0.0) return distance(p, v);   // v == w case
+    // Consider the line extending the segment, parameterized as v + t (w - v).
+    // We find projection of point p onto the line.
+    // It falls where t = [(p-v) . (w-v)] / |w-v|^2
+    // We clamp t from [0,1] to handle points outside the segment vw.
+    float t = max(0, min(1, dot(p - v, w - v) / l2));
+    vec2 projection = v + t * (w - v);  // Projection falls on the segment
+    return distance(p, projection);
 }
 
 void main() {
@@ -50,15 +54,6 @@ void main() {
 
         float d1 = distance_point_line(pos, p1, p2);
         float d2 = distance_point_line(pos, p1, p3);
-        // Make sure there's no line when cutoff angle > 180 degree
-        if ((angles.x <= 0.125f * 6.28318530718f || angles.x >= 0.875f * 6.28318530718f) && pos.x < 0.f) d1 = 100.f;
-        else if ((angles.x >= 0.125f * 6.28318530718f && angles.x <= 0.375f * 6.28318530718f) && pos.y < 0.f) d1 = 100.f;
-        else if ((angles.x >= 0.375f * 6.28318530718f && angles.x <= 0.625f * 6.28318530718f) && pos.x > 0.f) d1 = 100.f;
-        else if ((angles.x >= 0.625f * 6.28318530718f && angles.x <= 0.875f * 6.28318530718f) && pos.y > 0.f) d1 = 100.f;
-        if ((angles.y <= 0.125f * 6.28318530718f || angles.y >= 0.875f * 6.28318530718f) && pos.x < 0.f) d2 = 100.f;
-        else if ((angles.y >= 0.125f * 6.28318530718f && angles.y <= 0.375f * 6.28318530718f) && pos.y < 0.f) d2 = 100.f;
-        else if ((angles.y >= 0.375f * 6.28318530718f && angles.y <= 0.625f * 6.28318530718f) && pos.x > 0.f) d2 = 100.f;
-        else if ((angles.y >= 0.625f * 6.28318530718f && angles.y <= 0.875f * 6.28318530718f) && pos.y > 0.f) d2 = 100.f;
         float cutoffAlpha = smoothstep(0.f, 2.0f, min(d1, d2));
         fragColor = mix(fragColor, bgColor, cutoffAlpha);
     }

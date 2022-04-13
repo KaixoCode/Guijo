@@ -1,9 +1,11 @@
 LOAD_AS_STRING(
 
-out vec4 FragColor;
+out vec4 fragColor;
 uniform vec4 color;
-uniform vec4 realdim;
-uniform float width;
+uniform vec2 length;
+uniform float type;
+
+in vec2 fragCoord;
 
 float minimum_distance(vec2 v, vec2 w, vec2 p) {
 	// Return minimum distance between line segment vw and point p
@@ -18,9 +20,32 @@ float minimum_distance(vec2 v, vec2 w, vec2 p) {
 	return distance(p, projection);
 }
 
+
 void main() {
-	float dist = minimum_distance(realdim.zw, realdim.xy, gl_FragCoord.xy);
-	if (dist / width > 0.5) FragColor = vec4(color.rgb, 2 * (1 - (dist / width)) * color.a);
-	else FragColor = color;
+	float edgeSoftness = 0.5f;
+	float width = length.y - edgeSoftness;
+	float dist = 0;
+	if (type == 0) {
+		float len = length.x / 2.f - length.y / 2.f;
+		dist = minimum_distance(vec2(-len, 0.f), vec2(len, 0.f), fragCoord.xy);
+	} else if (type == 1) {
+		float len = length.x / 2.f;
+		dist = minimum_distance(vec2(-len, 0.f), vec2(len, 0.f), fragCoord.xy);
+		float edgeDist = abs(fragCoord.x) - len + length.y / 2.f;
+		if (edgeDist > 0.f) {
+			dist = max(edgeDist, dist);
+		}
+	} else if (type == 2) {
+		float len = length.x / 2.f - length.y / 2.f;
+		dist = minimum_distance(vec2(-len, 0.f), vec2(len, 0.f), fragCoord.xy);
+		float edgeDist = abs(fragCoord.x) - len + length.y / 2.f;
+		if (edgeDist > 0.f) {
+			dist = max(edgeDist, dist);
+		}
+	}
+	float smoothedAlpha = smoothstep(-edgeSoftness, edgeSoftness, dist - width / 2.0f);
+	vec4 fillColor = color;
+	vec4 bgColor = vec4(fillColor.xyz, 0.0f);
+	fragColor = mix(fillColor, bgColor, smoothedAlpha);
 }
 )

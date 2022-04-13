@@ -122,6 +122,14 @@ namespace Guijo {
             return x() >= v.left() && x() <= v.right() && y() >= v.top() && y() <= v.bottom();
         }
 
+        constexpr virtual Point to(const Point& p, float amt) const {
+            return { p.x() * amt + x() * (1 - amt), p.y() * amt + y() * (1 - amt) };
+        }
+
+        constexpr virtual float distance(const Point& p) const {
+            return std::sqrt((p.x() - x()) * (p.x() - x()) + (p.y() - y()) * (p.y() - y()));
+        }
+
         template<size_t I> requires (I < 2) constexpr auto& get()& { return data[I]; }
         template<size_t I> requires (I < 2) constexpr auto const& get() const& { return data[I]; }
         template<size_t I> requires (I < 2) constexpr auto&& get()&& { return std::move(data[I]); }

@@ -21,6 +21,11 @@ namespace Guijo {
 		};
 	}
 	using Alignment = std::uint8_t;
+	enum class StrokeCap {
+		Round = 0, // (====)  Rounded off
+		Square,    //  ====   Cut off at point
+		Project,   // ======  Cut off at point + strokeWeight
+	};
 
 	// Converts trivially destructible types into a unique ptr of raw bytes
 	template<class ...Tys> 
@@ -46,7 +51,7 @@ namespace Guijo {
 	template<> struct Command<Stroke> { Color color; };
 	template<> struct Command<StrokeWeight> { float weight; };
 	template<> struct Command<Rect> { Dimensions<float> dimensions; Dimensions<float> radius = 0; float rotation = 0;  };
-	template<> struct Command<Line> { Point<float> start; Point<float> end; float thickness = 1; };
+	template<> struct Command<Line> { Point<float> start; Point<float> end; StrokeCap cap = StrokeCap::Round; };
 	template<> struct Command<Circle> { Point<float> center; float radius; Point<float> angles{ 0, 0 };  };
 	template<> struct Command<Triangle> { Dimensions<float> dimensions; float rotation = 0; };
 	template<> struct Command<Text> { std::string_view text; Point<float> pos; };
@@ -114,8 +119,8 @@ namespace Guijo {
 			m_Commands.emplace(Command<Rect>{ rect, radius, rotation });
 		}
 
-		void line(const Point<float>& start, const Point<float>& end, float thickness = 1) {
-			m_Commands.emplace(Command<Line>{ start, end, thickness }); 
+		void line(const Point<float>& start, const Point<float>& end, StrokeCap cap = StrokeCap::Round) {
+			m_Commands.emplace(Command<Line>{ start, end, cap }); 
 		}
 
 		void circle(const Point<float>& center, float radius, const Point<float>& angles = { 0, 0 }) {

@@ -48,7 +48,11 @@ void Graphics::initialize(HDC hdc) {
 
 void Graphics::createBuffers() {
 	{	// Line
-		constexpr float _vertices[] = { 0.0f, 0.0f, 1.0f, 1.0f, };
+		constexpr float _vertices[] = {
+			-.5f, -.5f,  .5f, -.5f,
+			-.5f,  .5f,  .5f, -.5f,
+			 .5f,  .5f, -.5f,  .5f,
+		};
 
 		glGenVertexArrays(1, &line.vao);
 		glGenBuffers(1, &line.vbo);
@@ -243,16 +247,18 @@ void Graphics::runCommand(Command<Rect>& v) {
 }
 
 void Graphics::runCommand(Command<Line>& v) {
-	auto& [start, end, thickness] = v;
+	auto& [start, end, cap] = v;
+	start.y(windowSize.height() - start.y()); // Flip y
+	end.y(windowSize.height() - end.y()); // Flip y
 
 	static const Shader _shader {
 #include <Guijo/Shaders/LineVertex.shader>
 #include <Guijo/Shaders/LineFragment.shader>
 	};
-	static const GLint dims = glGetUniformLocation(_shader.ID, "dim");
-	static const GLint realdim = glGetUniformLocation(_shader.ID, "realdim");
-	static const GLint widths = glGetUniformLocation(_shader.ID, "width");
-	static const GLint color = glGetUniformLocation(_shader.ID, "color");
+	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
+	static const GLint uf_length = glGetUniformLocation(_shader.ID, "length");
+	static const GLint uf_type = glGetUniformLocation(_shader.ID, "type");
+	static const GLint uf_color = glGetUniformLocation(_shader.ID, "color");
 
 	if (m_PreviousShader != Shaders::LineShader) {
 		_shader.Use();
@@ -260,51 +266,26 @@ void Graphics::runCommand(Command<Line>& v) {
 		m_PreviousShader = Shaders::LineShader;
 	}
 
-	thickness /= scaling;
+	float thickness = strokeWeight / scaling;
 
-	glm::vec4 dim = { start.x(), start.y(), end.x(), end.y() };
-
-	glm::vec4 _tdim = dim;
-	float delta_x = _tdim.z - _tdim.x;
-	float delta_y = _tdim.w - _tdim.y;
+	auto middle = start.to(end, 0.5);
+	auto length = start.distance(end);
+	
+	float delta_x = end.x() - start.x();
+	float delta_y = end.y() - start.y();
 	float angle = std::atan2(delta_y, delta_x);
-	float dx = std::cos(angle);
-	float dy = std::sin(angle);
-	_tdim.x -= dx * thickness * 0.25;
-	_tdim.z += dx * thickness * 0.25;
-	_tdim.y -= dy * thickness * 0.25;
-	_tdim.w += dy * thickness * 0.25;
 
-	glm::vec4 _dim{};
-	_dim.x = (_tdim.x + matrix[3].x) * projection[0].x + projection[3].x;
-	_dim.y = (_tdim.y + matrix[3].y) * projection[1].y + projection[3].y;
-	_dim.z = (_tdim.z + matrix[3].x) * projection[0].x + projection[3].x - _dim.x;
-	_dim.w = (_tdim.w + matrix[3].y) * projection[1].y + projection[3].y - _dim.y;
+	glm::mat4 _model{ 1.0f };
+	_model = glm::translate(_model, glm::vec3{ middle.x(), middle.y(), 0.f});
+	_model = glm::rotate(_model, angle, glm::vec3{ 0, 0, 1 });
+	_model = glm::scale(_model, glm::vec3{ length + thickness, thickness + 0.5, 1 });
 
-	glm::vec4 _rdim{
-		(dim.x + matrix[3].x) / scaling,
-		(dim.y + matrix[3].y) / scaling,
-		(dim.z + matrix[3].x) / scaling,
-		(dim.w + matrix[3].y) / scaling 
-	};
+	_shader.SetMat4(uf_mvp, viewProjection * _model);
+	_shader.SetVec2(uf_length, glm::vec2(length + thickness, thickness));
+	_shader.SetVec4(uf_color, stroke);
+	_shader.SetFloat(uf_type, static_cast<float>(cap));
 
-	delta_x = _rdim.z - _rdim.x;
-	delta_y = _rdim.w - _rdim.y;
-	angle = std::atan2(delta_y, delta_x);
-	dx = std::cos(angle);
-	dy = std::sin(angle);
-	_rdim.x += dx * thickness * 0.25;
-	_rdim.z -= dx * thickness * 0.25;
-	_rdim.y += dy * thickness * 0.25;
-	_rdim.w -= dy * thickness * 0.25;
-
-	_shader.SetVec4(dims, _dim);
-	_shader.SetVec4(realdim, _rdim);
-	_shader.SetFloat(widths, thickness * 0.5f);
-	_shader.SetVec4(color, fill);
-
-	glLineWidth(thickness);
-	glDrawArrays(GL_LINES, 0, 2);
+	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
 void Graphics::runCommand(Command<Circle>& v) {
