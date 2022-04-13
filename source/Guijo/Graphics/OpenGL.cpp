@@ -225,9 +225,9 @@ void Graphics::runCommand(Command<Rect>& v) {
 	glm::vec4 _radius{ radius.x(), radius.y(), radius.width(), radius.height(), };
 	glm::mat4 _model{ 1.0f };
 	_model = glm::translate(_model, glm::vec3{ _dim.x, _dim.y, 0.f });
-	if (rotation != 0) {
+	if (rotation.radians() != 0) {
 		_model = glm::translate(_model, glm::vec3{ _dim.z / 2, _dim.w / 2, 0. });
-		_model = glm::rotate(_model, glm::radians(rotation), glm::vec3{ 0, 0, 1 });
+		_model = glm::rotate(_model, rotation.radians(), glm::vec3{0, 0, 1});
 		_model = glm::translate(_model, glm::vec3{ -_dim.z / 2, -_dim.w / 2, 0. });
 	}
 	_model = glm::scale(_model, glm::vec3{ _dim.z, _dim.w, 1 });
@@ -311,14 +311,10 @@ void Graphics::runCommand(Command<Circle>& v) {
 	_shader.SetVec4(uf_strokeColor, stroke);
 	_shader.SetFloat(uf_strokeWeight, strokeWeight);
 
-	if (angles.x() == 0 && angles.y() == 0)
+	if (angles[0] == angles[1]) // same angles, so no cutoff
 		_shader.SetVec2(uf_angles, { 0, std::numbers::pi_v<double> * 2 });
-	else {
-		_shader.SetVec2(uf_angles, {
-			std::fmod(angles.y() + 4.0 * std::numbers::pi_v<double>, 2.0 * std::numbers::pi_v<double>),
-			std::fmod(angles.x() + 4.0 * std::numbers::pi_v<double>, 2.0 * std::numbers::pi_v<double>)
-		});
-	}
+	else _shader.SetVec2(uf_angles, { angles[1].normalized(), angles[0].normalized() });
+	
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -443,7 +439,7 @@ void Graphics::runCommand(Command<Text>& v) {
 			float _xpos = std::floor(pos.x() * matrix[0][0] + _ch.bearing.x() * _scale);
 			float _ypos = std::floor(pos.y() - (_ch.size.height() - _ch.bearing.y()) * _scale);
 
-			glm::vec4 _dim;
+			glm::vec4 _dim{};
 			_dim.x = (_xpos + matrix[3].x) * projection[0].x + projection[3].x;
 			_dim.y = (_ypos + matrix[3].y) * projection[1].y + projection[3].y;
 			_dim.z = fontSize * projection[0].x;

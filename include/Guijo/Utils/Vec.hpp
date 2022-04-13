@@ -3,7 +3,6 @@
 
 namespace Guijo {
     template<std::size_t N, class Ty> 
-        requires (std::integral<Ty> || std::floating_point<Ty>) 
     struct Vec {
         using value_type = Ty;
         using size_type = std::size_t;
@@ -99,9 +98,9 @@ namespace std {
 }
 
 namespace Guijo {
-    template<class Ty> requires (std::integral<Ty> || std::floating_point<Ty>) 
+    template<class Ty>
     class Dimensions;
-    template<class Ty> requires (std::integral<Ty> || std::floating_point<Ty>)
+    template<class Ty>
     class Point {
     public:
         constexpr Point() : data{ 0, 0 } {};
@@ -126,7 +125,7 @@ namespace Guijo {
             return { p.x() * amt + x() * (1 - amt), p.y() * amt + y() * (1 - amt) };
         }
 
-        constexpr virtual float distance(const Point& p) const {
+        constexpr virtual Ty distance(const Point& p) const {
             return std::sqrt((p.x() - x()) * (p.x() - x()) + (p.y() - y()) * (p.y() - y()));
         }
 
@@ -169,7 +168,7 @@ namespace std {
 }
 
 namespace Guijo {
-    template<class Ty> requires (std::integral<Ty> || std::floating_point<Ty>)
+    template<class Ty>
     class Dimensions {
     public:
         using value_type = Ty;

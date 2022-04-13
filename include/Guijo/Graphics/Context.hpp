@@ -2,6 +2,7 @@
 #include "Guijo/pch.hpp"
 #include "Guijo/Utils/Vec.hpp"
 #include "Guijo/Utils/Color.hpp"
+#include "Guijo/Utils/Angle.hpp"
 
 namespace Guijo {
 	namespace Align {
@@ -50,9 +51,9 @@ namespace Guijo {
 	template<> struct Command<Fill> { Color color; };
 	template<> struct Command<Stroke> { Color color; };
 	template<> struct Command<StrokeWeight> { float weight; };
-	template<> struct Command<Rect> { Dimensions<float> dimensions; Dimensions<float> radius = 0; float rotation = 0;  };
+	template<> struct Command<Rect> { Dimensions<float> dimensions; Dimensions<float> radius = 0; Angle<float> rotation = 0;  };
 	template<> struct Command<Line> { Point<float> start; Point<float> end; StrokeCap cap = StrokeCap::Round; };
-	template<> struct Command<Circle> { Point<float> center; float radius; Point<float> angles{ 0, 0 };  };
+	template<> struct Command<Circle> { Point<float> center; float radius; Vec2<Angle<float>> angles{ 0, 0 };  };
 	template<> struct Command<Triangle> { Point<float> a; Point<float> b; Point<float> c; };
 	template<> struct Command<Text> { std::string_view text; Point<float> pos; };
 	template<> struct Command<FontSize> { float size; };
@@ -115,7 +116,7 @@ namespace Guijo {
 			m_Commands.emplace(Command<StrokeWeight>{ v });
 		}
 
-		void rect(const Dimensions<float>& rect, const Dimensions<float> radius = 0, float rotation = 0) {
+		void rect(const Dimensions<float>& rect, const Dimensions<float> radius = 0, Angle<float> rotation = 0) {
 			m_Commands.emplace(Command<Rect>{ rect, radius, rotation });
 		}
 
@@ -123,7 +124,7 @@ namespace Guijo {
 			m_Commands.emplace(Command<Line>{ start, end, cap }); 
 		}
 
-		void circle(const Point<float>& center, float radius, const Point<float>& angles = { 0, 0 }) {
+		void circle(const Point<float>& center, float radius, const Vec2<Angle<float>>& angles = { 0, 0 }) {
 			m_Commands.emplace(Command<Circle>{ center, radius, angles });
 		}
 
