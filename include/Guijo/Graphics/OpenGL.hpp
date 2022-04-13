@@ -7,7 +7,7 @@ namespace Guijo {
 	public:		
 		void runCommand(Command<Rect>&) override;
 		void runCommand(Command<Line>&) override;
-		void runCommand(Command<Ellipse>&) override;
+		void runCommand(Command<Circle>&) override;
 		void runCommand(Command<Triangle>&) override;
 		void runCommand(Command<Text>&) override;
 		void runCommand(Command<Viewport>&) override;

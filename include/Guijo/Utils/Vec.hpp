@@ -179,6 +179,14 @@ namespace Guijo {
             : data{ static_cast<Ty>(x), p[0], p[1], static_cast<Ty>(h) } {}
         constexpr Dimensions(const Vec2<Ty>& p, auto w, auto h)
             : data{ p[0], p[1], static_cast<Ty>(w), static_cast<Ty>(h) } {}
+        constexpr Dimensions(Ty x, Ty y, Ty w, Ty h)
+            : data{ static_cast<Ty>(x), static_cast<Ty>(y), static_cast<Ty>(w), static_cast<Ty>(h) } {}
+        constexpr Dimensions(Ty x, Ty y, const Vec2<Ty>& p)
+            : data{ static_cast<Ty>(x), static_cast<Ty>(y), p[0], p[1] } {}
+        constexpr Dimensions(Ty x, const Vec2<Ty>& p, Ty h)
+            : data{ static_cast<Ty>(x), p[0], p[1], static_cast<Ty>(h) } {}
+        constexpr Dimensions(const Vec2<Ty>& p, Ty w, Ty h)
+            : data{ p[0], p[1], static_cast<Ty>(w), static_cast<Ty>(h) } {}
 
         constexpr virtual Ty x() const { return data[0]; }
         constexpr virtual Ty y() const { return data[1]; }

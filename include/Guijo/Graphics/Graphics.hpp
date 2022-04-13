@@ -49,7 +49,7 @@ namespace Guijo {
 		virtual void runCommand(Command<StrokeWeight>&);
 		virtual void runCommand(Command<Rect>&) = 0;
 		virtual void runCommand(Command<Line>&) = 0;
-		virtual void runCommand(Command<Ellipse>&) = 0;
+		virtual void runCommand(Command<Circle>&) = 0;
 		virtual void runCommand(Command<Triangle>&) = 0;
 		virtual void runCommand(Command<Text>&) = 0;
 		virtual void runCommand(Command<FontSize>&);

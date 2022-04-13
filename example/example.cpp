@@ -54,11 +54,11 @@ public:
         context.stroke({ 255, 255, 255, 255 });
         context.strokeWeight(p[0] / 10);
         //context.rect(dimensions().inset(100, 150), { p[1], p[2], p[3], p[4] }, p[5]);
-        context.ellipse(dimensions().inset(100, 150), { p[1], p[2] });
+        context.circle(center(), 100.f, { p[1] / 100.f, p[2] / 100.f });
         context.fill({ 255, 255, 255 });
         context.font(Font::Default);
         context.textAlign(Align::Center);
-        context.text("test", { x() + width() / 2, y() + height() / 2 });
+        context.text("test", center());
 
         context.fill({ 255, 255, 255, 255 });
         for (int i = 0; i < 6; i++) {

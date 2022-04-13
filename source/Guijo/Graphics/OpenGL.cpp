@@ -230,8 +230,8 @@ void Graphics::runCommand(Command<Rect>& v) {
 		_model = glm::rotate(_model, glm::radians(rotation), glm::vec3{ 0, 0, 1 });
 		_model = glm::translate(_model, glm::vec3{ -_dim.z / 2, -_dim.w / 2, 0. });
 	}
-
 	_model = glm::scale(_model, glm::vec3{ _dim.z, _dim.w, 1 });
+
 	_shader.SetMat4(uf_mvp, viewProjection * _model);
 	_shader.SetVec4(uf_dim, _dim);
 	_shader.SetVec4(uf_fillColor, fill);
@@ -307,17 +307,20 @@ void Graphics::runCommand(Command<Line>& v) {
 	glDrawArrays(GL_LINES, 0, 2);
 }
 
-void Graphics::runCommand(Command<Ellipse>& v) {
-	auto& [dim, a] = v;
+void Graphics::runCommand(Command<Circle>& v) {
+	auto& [center, radius, angles] = v;
+	center.y(windowSize.height() - center.y()); // Flip y
 
 	static const Shader _shader {
-#include <Guijo/Shaders/EllipseVertex.shader>
-#include <Guijo/Shaders/EllipseFragment.shader>
+#include <Guijo/Shaders/CircleVertex.shader>
+#include <Guijo/Shaders/CircleFragment.shader>
 	};
-	static const GLint mvp = glGetUniformLocation(_shader.ID, "mvp");
-	static const GLint color = glGetUniformLocation(_shader.ID, "color");
-	static const GLint angles = glGetUniformLocation(_shader.ID, "angles");
-	static const GLint dimensions = glGetUniformLocation(_shader.ID, "dimensions");
+	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
+	static const GLint uf_dim = glGetUniformLocation(_shader.ID, "dim");
+	static const GLint uf_fillColor = glGetUniformLocation(_shader.ID, "fill");
+	static const GLint uf_strokeColor = glGetUniformLocation(_shader.ID, "stroke");
+	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
+	static const GLint uf_angles = glGetUniformLocation(_shader.ID, "angles");
 
 	if (m_PreviousShader != Shaders::EllipseShader) {
 		_shader.Use();
@@ -325,32 +328,27 @@ void Graphics::runCommand(Command<Ellipse>& v) {
 		m_PreviousShader = Shaders::EllipseShader;
 	}
 
+	glm::vec4 _dim{ center.x(), center.y(), 2 * radius + 2, 2 * radius + 2 };
 	glm::mat4 _model{ 1.0f };
-	_model = glm::translate(_model, glm::vec3{ dim.x(), dim.y(), 0});
-	_model = glm::scale(_model, glm::vec3{ dim.width(), dim.height(), 1});
+	_model = glm::translate(_model, glm::vec3{ _dim.x, _dim.y, 0.f });
+	_model = glm::scale(_model, glm::vec3{ _dim.z, _dim.w, 1 });
 
-	_shader.SetMat4(mvp, viewProjection * _model);
-	_shader.SetVec4(color, fill);
+	_shader.SetMat4(uf_mvp, viewProjection * _model);
+	_shader.SetVec4(uf_dim, _dim);
+	_shader.SetVec4(uf_fillColor, fill);
+	_shader.SetVec4(uf_strokeColor, stroke);
+	_shader.SetFloat(uf_strokeWeight, strokeWeight);
 
 	constexpr auto PI = std::numbers::pi_v<double>;
 
-	if (a.x() == 0 && a.y() == 0) 
-		_shader.SetVec2(angles, { 0, PI * 2 });
+	if (angles.x() == 0 && angles.y() == 0)
+		_shader.SetVec2(uf_angles, { 0, PI * 2 });
 	else {
-		_shader.SetVec2(angles, {
-			std::fmod(a.y() + 4.0 * PI, 2.0 * PI),
-			std::fmod(a.x() + 4.0 * PI, 2.0 * PI)
+		_shader.SetVec2(uf_angles, {
+			std::fmod(angles.y() + 4.0 * PI, 2.0 * PI),
+			std::fmod(angles.x() + 4.0 * PI, 2.0 * PI)
 		});
 	}
-
-	glm::vec4 _dim{ 
-		(dim.x() + matrix[3].x) / scaling, 
-		(dim.y() + matrix[3].y) / scaling, 
-		dim.width() / scaling, 
-		dim.height() / scaling
-	};
-
-	_shader.SetVec4(dimensions, _dim);
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }

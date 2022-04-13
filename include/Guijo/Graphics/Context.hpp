@@ -34,7 +34,7 @@ namespace Guijo {
 	}
 
 	enum Commands : std::size_t {
-		Fill = 0, Stroke, StrokeWeight, Rect, Line, Ellipse, Triangle, 
+		Fill = 0, Stroke, StrokeWeight, Rect, Line, Circle, Triangle, 
 		Text, FontSize, SetFont, TextAlign,
 		Translate, PushMatrix, PopMatrix, Viewport,
 		Clip, PushClip, PopClip, ClearClip,
@@ -47,7 +47,7 @@ namespace Guijo {
 	template<> struct Command<StrokeWeight> { float weight; };
 	template<> struct Command<Rect> { Dimensions<float> dimensions; Dimensions<float> radius = 0; float rotation = 0;  };
 	template<> struct Command<Line> { Point<float> start; Point<float> end; float thickness = 1; };
-	template<> struct Command<Ellipse> { Dimensions<float> dimensions; Point<float> angles{ 0, 0 }; };
+	template<> struct Command<Circle> { Point<float> center; float radius; Point<float> angles{ 0, 0 };  };
 	template<> struct Command<Triangle> { Dimensions<float> dimensions; float rotation = 0; };
 	template<> struct Command<Text> { std::string_view text; Point<float> pos; };
 	template<> struct Command<FontSize> { float size; };
@@ -83,7 +83,7 @@ namespace Guijo {
 		void noStroke() { m_Commands.emplace(Command<StrokeWeight>{ 0 }); }
 		void rect(const Command<Rect>& v) { m_Commands.emplace(v); }
 		void line(const Command<Line>& v) { m_Commands.emplace(v); }
-		void ellipse(const Command<Ellipse>& v) { m_Commands.emplace(v); }
+		void circle(const Command<Circle>& v) { m_Commands.emplace(v); }
 		void triangle(const Command<Triangle>& v) { m_Commands.emplace(v); }
 		void text(const Command<Text>& v) { m_Commands.emplace(v); }
 		void fontSize(const Command<FontSize>& v) { m_Commands.emplace(v); }
@@ -118,8 +118,8 @@ namespace Guijo {
 			m_Commands.emplace(Command<Line>{ start, end, thickness }); 
 		}
 
-		void ellipse(const Dimensions<float>& ellipse, const Point<float>& angles = { 0, 0 }) {
-			m_Commands.emplace(Command<Ellipse>{ ellipse, angles });
+		void circle(const Point<float>& center, float radius, const Point<float>& angles = { 0, 0 }) {
+			m_Commands.emplace(Command<Circle>{ center, radius, angles });
 		}
 
 		void triangle(const Dimensions<float>& triangle, float rotation = 0) {
