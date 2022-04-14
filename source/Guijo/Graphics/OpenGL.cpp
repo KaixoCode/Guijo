@@ -152,16 +152,16 @@ void Graphics::runCommand(Command<Rect>& v) {
 	auto& [dim, radius, rotation] = v;
 	dim.y(windowSize.height() - dim.y() - dim.height()); // Flip y
 
-	static thread_local const Shader _shader{
+	static const Shader _shader{
 #include <Guijo/Shaders/RectVertex.shader>
 #include <Guijo/Shaders/RectFragment.shader>
 	};
-	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
-	static thread_local const GLint uf_dim = _shader.uniform("dim");
-	static thread_local const GLint uf_fillColor = _shader.uniform("fill");
-	static thread_local const GLint uf_strokeColor = _shader.uniform("stroke");
-	static thread_local const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
-	static thread_local const GLint uf_radius = _shader.uniform("radius");
+	static const GLint uf_mvp = _shader.uniform("mvp");
+	static const GLint uf_dim = _shader.uniform("dim");
+	static const GLint uf_fillColor = _shader.uniform("fill");
+	static const GLint uf_strokeColor = _shader.uniform("stroke");
+	static const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
+	static const GLint uf_radius = _shader.uniform("radius");
 
 	if (_shader.use()) rect.bind();
 
@@ -194,14 +194,14 @@ void Graphics::runCommand(Command<Line>& v) {
 	start.y(windowSize.height() - start.y()); // Flip y
 	end.y(windowSize.height() - end.y()); // Flip y
 
-	static thread_local const Shader _shader {
+	static const Shader _shader {
 #include <Guijo/Shaders/LineVertex.shader>
 #include <Guijo/Shaders/LineFragment.shader>
 	};
-	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
-	static thread_local const GLint uf_length = _shader.uniform("length");
-	static thread_local const GLint uf_type = _shader.uniform("type");
-	static thread_local const GLint uf_color = _shader.uniform("color");
+	static const GLint uf_mvp = _shader.uniform("mvp");
+	static const GLint uf_length = _shader.uniform("length");
+	static const GLint uf_type = _shader.uniform("type");
+	static const GLint uf_color = _shader.uniform("color");
 
 	if (_shader.use()) line.bind();
 
@@ -231,16 +231,16 @@ void Graphics::runCommand(Command<Circle>& v) {
 	auto& [center, radius, angles] = v;
 	center.y(windowSize.height() - center.y()); // Flip y
 
-	static thread_local const Shader _shader {
+	static const Shader _shader {
 #include <Guijo/Shaders/CircleVertex.shader>
 #include <Guijo/Shaders/CircleFragment.shader>
 	};
-	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
-	static thread_local const GLint uf_dim = _shader.uniform("dim");
-	static thread_local const GLint uf_fillColor = _shader.uniform("fill");
-	static thread_local const GLint uf_strokeColor = _shader.uniform("stroke");
-	static thread_local const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
-	static thread_local const GLint uf_angles = _shader.uniform("angles");
+	static const GLint uf_mvp = _shader.uniform("mvp");
+	static const GLint uf_dim = _shader.uniform("dim");
+	static const GLint uf_fillColor = _shader.uniform("fill");
+	static const GLint uf_strokeColor = _shader.uniform("stroke");
+	static const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
+	static const GLint uf_angles = _shader.uniform("angles");
 
 	if (_shader.use()) circle.bind();
 
@@ -265,18 +265,18 @@ void Graphics::runCommand(Command<Triangle>& v) {
 	b.y(windowSize.height() - b.y()); // Flip y
 	c.y(windowSize.height() - c.y()); // Flip y
 
-	static thread_local const Shader _shader {
+	static const Shader _shader {
 #include <Guijo/Shaders/TriangleVertex.shader>
 #include <Guijo/Shaders/TriangleFragment.shader>
 	};
-	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
-	static thread_local const GLint uf_size = _shader.uniform("size");
-	static thread_local const GLint uf_a = _shader.uniform("a");
-	static thread_local const GLint uf_b = _shader.uniform("b");
-	static thread_local const GLint uf_c = _shader.uniform("c");
-	static thread_local const GLint uf_fill = _shader.uniform("fill");
-	static thread_local const GLint uf_stroke = _shader.uniform("stroke");
-	static thread_local const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
+	static const GLint uf_mvp = _shader.uniform("mvp");
+	static const GLint uf_size = _shader.uniform("size");
+	static const GLint uf_a = _shader.uniform("a");
+	static const GLint uf_b = _shader.uniform("b");
+	static const GLint uf_c = _shader.uniform("c");
+	static const GLint uf_fill = _shader.uniform("fill");
+	static const GLint uf_stroke = _shader.uniform("stroke");
+	static const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
 
 	if (_shader.use()) triangle.bind();
 
@@ -320,15 +320,15 @@ void Graphics::runCommand(Command<Text>& v) {
 	auto& [str, pos] = v;
 	pos.y(windowSize.height() - pos.y()); // Flip y
 
-	static thread_local const Shader _shader {
+	static const Shader _shader {
 #include <Guijo/Shaders/TextVertex.shader>
 #include <Guijo/Shaders/TextFragment.shader>
 	};
 
-	static thread_local const GLint uf_color = _shader.uniform("color");
-	static thread_local const GLint uf_fontmap = _shader.uniform("fontmap");
-	static thread_local const GLint uf_character = _shader.uniform("character");
-	static thread_local const GLint uf_dim = _shader.uniform("dim");
+	static const GLint uf_color = _shader.uniform("color");
+	static const GLint uf_fontmap = _shader.uniform("fontmap");
+	static const GLint uf_character = _shader.uniform("character");
+	static const GLint uf_dim = _shader.uniform("dim");
 
 	// No font selected, so can't render text
 	if (!currentFont) return;

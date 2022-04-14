@@ -18,7 +18,7 @@ namespace Guijo {
 		virtual void swapBuffers() = 0;
 
 	protected:
-		static thread_local std::map<std::string, Guijo::Font, std::less<>> Fonts;
+		static std::map<std::string, Guijo::Font, std::less<>> Fonts;
 
 		DrawContext context;
 

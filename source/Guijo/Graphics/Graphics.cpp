@@ -3,7 +3,7 @@
 
 using namespace Guijo;
 
-thread_local std::map<std::string, Guijo::Font, std::less<>> GraphicsBase::Fonts{};
+std::map<std::string, Guijo::Font, std::less<>> GraphicsBase::Fonts{};
 
 void GraphicsBase::render() {
     auto& commands = context.m_Commands;
