@@ -3,6 +3,21 @@
 
 namespace Guijo {
     namespace detail {
+        // Helpers for finding default event methods
+        template<class Ty> concept m_FindMP = requires(decltype(&Ty::mousePress) a) { a; };
+        template<class Ty> concept m_FindMM = requires(decltype(&Ty::mouseMove) a) { a; };
+        template<class Ty> concept m_FindMD = requires(decltype(&Ty::mouseDrag) a) { a; };
+        template<class Ty> concept m_FindMC = requires(decltype(&Ty::mouseClick) a) { a; };
+        template<class Ty> concept m_FindMR = requires(decltype(&Ty::mouseRelease) a) { a; };
+        template<class Ty> concept m_FindMW = requires(decltype(&Ty::mouseWheel) a) { a; };
+        template<class Ty> concept m_FindME = requires(decltype(&Ty::mouseEnter) a) { a; };
+        template<class Ty> concept m_FindMX = requires(decltype(&Ty::mouseExit) a) { a; };
+        template<class Ty> concept m_FindFC = requires(decltype(&Ty::focus) a) { a; };
+        template<class Ty> concept m_FindUF = requires(decltype(&Ty::unfocus) a) { a; };
+        template<class Ty> concept m_FindKP = requires(decltype(&Ty::keyPress) a) { a; };
+        template<class Ty> concept m_FindKT = requires(decltype(&Ty::keyType) a) { a; };
+        template<class Ty> concept m_FindKR = requires(decltype(&Ty::keyRelease) a) { a; };
+
         namespace detail {
             template<class Ty> concept has_fun_op = requires(decltype(&Ty::operator()) a) { a; };
             template<class Ty> struct signature { static_assert(has_fun_op<Ty>, "Type has no function signature."); };

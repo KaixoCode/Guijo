@@ -51,9 +51,9 @@ namespace Guijo {
 	template<> struct Command<Fill> { Color color; };
 	template<> struct Command<Stroke> { Color color; };
 	template<> struct Command<StrokeWeight> { float weight; };
-	template<> struct Command<Rect> { Dimensions<float> dimensions; Dimensions<float> radius = 0; Angle<float> rotation = 0;  };
+	template<> struct Command<Rect> { Dimensions<float> dimensions; Vec4<float> radius = { 0, 0, 0, 0 }; Angle<float> rotation = 0; };
 	template<> struct Command<Line> { Point<float> start; Point<float> end; StrokeCap cap = StrokeCap::Round; };
-	template<> struct Command<Circle> { Point<float> center; float radius; Vec2<Angle<float>> angles{ 0, 0 };  };
+	template<> struct Command<Circle> { Point<float> center; float radius; Vec2<Angle<float>> angles{ 0, 0 }; };
 	template<> struct Command<Triangle> { Point<float> a; Point<float> b; Point<float> c; };
 	template<> struct Command<Text> { std::string_view text; Point<float> pos; };
 	template<> struct Command<FontSize> { float size; };

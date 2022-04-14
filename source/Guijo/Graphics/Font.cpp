@@ -52,7 +52,7 @@ void Font::CharMap::initialize() {
 
 		// Coords of small array
 		int subx = 0;
-		int suby = -(_height - _character.size.y()); // Initial offset for y
+		int suby = -(_height - _character.size.height()); // Initial offset for y
 		for (int y = 0; y < _height; y++) {
 			for (int x = 0; x < _width * 4; x++) {
 				// Default value = 0

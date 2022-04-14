@@ -10,7 +10,7 @@ float Window::y() const { return Object::y(); }
 float Window::width() const { return Object::width(); }
 float Window::height() const { return Object::height(); }
 Point<float> Window::pos() const { return Object::pos(); }
-Point<float> Window::size() const { return Object::size(); }
+Size<float> Window::size() const { return Object::size(); }
 Dimensions<float> Window::dimensions() const { return Object::dimensions(); }
 
 void Window::x(const float& v) { 
@@ -43,7 +43,7 @@ void Window::pos(const Point<float>& v) {
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);
 }
 
-void Window::size(const Point<float>& v) {
+void Window::size(const Size<float>& v) {
 	RECT rect{ left(), top(), left() + v.width(), top() + v.height() };
 	AdjustWindowRect(&rect, WS_VISIBLE, false);
 	SetWindowPos(m_Handle, nullptr, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top, 0);

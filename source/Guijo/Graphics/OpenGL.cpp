@@ -6,6 +6,7 @@ using namespace Guijo;
 
 #ifdef WIN32
 void Graphics::initialize(HDC hdc) {
+	m_Device = hdc;
 	static PIXELFORMATDESCRIPTOR _pfd{
 		.nSize = sizeof(PIXELFORMATDESCRIPTOR),
 		.nVersion = 1,
@@ -17,30 +18,20 @@ void Graphics::initialize(HDC hdc) {
 		.cAuxBuffers = 0,
 		.iLayerType = PFD_MAIN_PLANE,
 	};
-	auto iPixelFormat = ChoosePixelFormat(hdc, &_pfd);
-	SetPixelFormat(hdc, iPixelFormat, &_pfd);
+	auto iPixelFormat = ChoosePixelFormat(m_Device, &_pfd);
+	SetPixelFormat(m_Device, iPixelFormat, &_pfd);
 
-	m_Device = hdc;
+	m_Context = wglCreateContext(m_Device);
 	if (mainContext == nullptr) { // mark first created context as main
-		m_Context = wglCreateContext(hdc); // so we can link other contexts
-		mainContext = this;
-	} else {
+		mainContext = this; // so we can link other contexts later
+	} else { // In order to share, we need to make the main current.
 		wglMakeCurrent(mainContext->m_Device, mainContext->m_Context);
-		m_Context = wglCreateContext(hdc);
 		wglShareLists(mainContext->m_Context, m_Context);
-		constexpr bool useSwap = false;
-		if constexpr (useSwap) {
-			typedef BOOL(WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
-			PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)
-				wglGetProcAddress("wglSwapIntervalEXT");
-			wglMakeCurrent(m_Device, m_Context);
-			wglSwapIntervalEXT(0);
-		}
 	}
 
 	wglMakeCurrent(m_Device, m_Context);
 
-	constexpr auto ProcLoader = [](const char* name) -> void* {
+	constexpr static auto ProcLoader = [](const char* name) -> void* {
 		void* p = (void*)wglGetProcAddress(name);
 		if (p == 0 || (p == (void*)0x1) || (p == (void*)0x2)
 			|| (p == (void*)0x3) || (p == (void*)-1)) {
@@ -101,7 +92,7 @@ void Graphics::createBuffers() {
 
 void Graphics::prepare() {
 	if (m_Context != current) {
-		auto v = wglMakeCurrent(m_Device, m_Context);
+		wglMakeCurrent(m_Device, m_Context);
 		current = m_Context;
 	}
 
@@ -110,8 +101,7 @@ void Graphics::prepare() {
 }
 
 void Graphics::swapBuffers() {
-	auto res = wglSwapLayerBuffers(m_Device, WGL_SWAP_MAIN_PLANE);
-	int oaine = res;
+	wglSwapLayerBuffers(m_Device, WGL_SWAP_MAIN_PLANE);
 }
 #else
 void Graphics::prepare() {}
@@ -184,7 +174,7 @@ void Graphics::runCommand(Command<Rect>& v) {
 
 	// Adjust 1 pixel for Anti-Aliasing.
 	glm::vec4 _dim{ dim.x() - 1, dim.y() - 1, dim.width() + 2, dim.height() + 2 };
-	glm::vec4 _radius{ radius.x(), radius.y(), radius.width(), radius.height(), };
+	glm::vec4 _radius{ radius[0], radius[1], radius[2], radius[3],};
 	glm::mat4 _model{ 1.0f };
 	_model = glm::translate(_model, glm::vec3{ _dim.x, _dim.y, 0.f });
 	if (rotation.radians() != 0) {

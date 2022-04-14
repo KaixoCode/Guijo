@@ -10,7 +10,7 @@ namespace Guijo {
 		struct CharMap {
 			struct Character {
 				unsigned int index = static_cast<unsigned int>(-1);
-				Point<int> size{};
+				Size<int> size{};
 				Point<int> bearing{};
 				unsigned int advance{};
 			};

@@ -14,14 +14,14 @@ namespace Guijo {
 		float width() const override;
 		float height() const override;
 		Point<float> pos() const override;
-		Point<float> size() const override;
+		Size<float> size() const override;
 		Dimensions<float> dimensions() const override;
 		void x(const float& v) override;
 		void y(const float& v) override;
 		void width(const float& v) override;
 		void height(const float& v) override;
 		void pos(const Point<float>& v) override;
-		void size(const Point<float>& v) override;
+		void size(const Size<float>& v) override;
 		void dimensions(const Dimensions<float>& v) override;
 	
 	private:

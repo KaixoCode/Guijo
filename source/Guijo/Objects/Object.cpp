@@ -30,11 +30,11 @@ Object::Object() {
 }
 
 void Object::draw(DrawContext& context) const {
-    for (auto& _c : m_Objects) if (_c->get(Visible)) _c->draw(context);
+    for (auto& _c : objects()) if (_c->get(Visible)) _c->draw(context);
 }
 
 void Object::update() {
-    for (auto& _c : m_Objects) if (_c->get(Visible)) _c->update();
+    for (auto& _c : objects()) if (_c->get(Visible)) _c->update();
 }
 
 State Object::get(StateId v) const {
@@ -47,10 +47,10 @@ State Object::set(StateId v, State value) {
 }
 
 void Object::handle(const Event& e) {
-    for (auto& _c : m_Objects) // Forward event to sub-objects
+    for (auto& _c : objects()) // Forward event to sub-objects
         if (_c->get(Visible)) if (e.forward(*_c)) _c->handle(e);
     for (auto& _h : m_StateHandlers) // Handle state
-        for (std::size_t _matches = 0; auto& _c : std::views::reverse(m_Objects))
+        for (std::size_t _matches = 0; auto& _c : std::views::reverse(objects()))
             if (_c->get(Visible)) _matches += _h->handle(*this, e, *_c, _matches);
     for (auto& _h : m_EventHandlers) _h->handle(*this, e);
 }
