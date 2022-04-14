@@ -106,12 +106,14 @@ namespace Guijo {
 
         protected:
             static inline Size<float> windowSize; // Window size, used with 'vh' and 'vw' units
+            Size<float> finalSize;          // final calculated size
             Size<float> innerSize;     // final calculated size, taking into account padding
-            Size<float> preferredSize; // preferred size of object
+            float hypoMainSize;        // preferred size of object
+            float outerHypoMainSize;   // preferred size of object
             Size<float> parentSize;    // Parent size, used with % unit
             bool invalidated = true;   // Does this box need to be recalculated?
             
-            void refreshPreferredSize();
+            void refreshPreferredSize(int axis);
             friend class Unit;
         };
     }

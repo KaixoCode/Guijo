@@ -18,46 +18,52 @@ float Unit::decode(Box& obj, bool axis) {
 	}
 }
 
-void Box::refreshPreferredSize() {
-	auto sizeInDir = [this](int axis) -> float {
-		// If there's a concrete flex-basis value defined, use that
-		if (flex.basis.definite()) return flex.basis.decode(*this, axis);
-		// If size is indefinite, we'll set preferred to 0
-		if (!size[axis].definite()) return 0;
-		// Otherwise take defined size
-		auto _res = size[axis].decode(*this, axis);
-		// clamp to min and max size
-		if (min[axis].definite()) _res = std::max(min[axis].decode(*this, axis), _res);
-		if (max[axis].definite()) _res = std::min(max[axis].decode(*this, axis), _res);
-		// add margin
-		if (margin[axis].definite()) _res += margin[axis].decode(*this, axis);
-		if (margin[axis*2].definite()) _res += margin[axis*2].decode(*this, axis);
-		return _res;
-	};
-	// Get preferred size in both axes
-	preferredSize = { sizeInDir(0), sizeInDir(1) };
+void Box::refreshPreferredSize(int axis) {
+	// If there's a concrete flex-basis value defined, use that
+	if (flex.basis.definite()) hypoMainSize = flex.basis.decode(*this, axis);
+	// If size is indefinite, we'll set preferred to 0
+	else if (!size[axis].definite()) hypoMainSize = 0;
+	else hypoMainSize = size[axis].decode(*this, axis);
+	// clamp to min and max size
+	if (min[axis].definite()) hypoMainSize = std::max(min[axis].decode(*this, axis), hypoMainSize);
+	if (max[axis].definite()) hypoMainSize = std::min(max[axis].decode(*this, axis), hypoMainSize);
+	// Outer hypo main size includes margin
+	outerHypoMainSize = hypoMainSize;
+	if (margin[axis].definite()) outerHypoMainSize += margin[axis].decode(*this, axis);
+	if (margin[axis * 2].definite()) outerHypoMainSize += margin[axis * 2].decode(*this, axis);
 }
 
 
 void Box::format(Object& self) {
 	
 	auto& container = self.box;
-	container.innerSize = self.size();
+	auto& items = self.objects();
+	container.innerSize = container.finalSize;
 	container.innerSize[0] -= container.padding[0].decode(container, 0);
 	container.innerSize[0] -= container.padding[2].decode(container, 0);
 	container.innerSize[1] -= container.padding[1].decode(container, 1);
 	container.innerSize[1] -= container.padding[3].decode(container, 1);
 
-	for (auto& c : self.objects()) {
+	// Axis, Row = Horizontal, so x-axis, so 0. Column opposite
+	int axis = container.flex.direction == Direction::Column
+		    || container.flex.direction == Direction::ColumnReverse;
+
+	for (auto& c : items) {
 		auto& item = c->box;
 
 		item.parentSize = container.innerSize;
-		item.refreshPreferredSize();
+		item.refreshPreferredSize(axis);
 	}
 
-	// Single line container
-	if (container.flex.wrap == Wrap::NoWrap) {
+	auto resolveLine = [&](auto it, std::size_t count) {
 
+	};
+
+	// Single line container, everything in a single line
+	if (container.flex.wrap == Wrap::NoWrap) {
+		resolveLine(items.begin(), items.size());
+	} else {
+		auto availableSize = container.innerSize[axis];
 	}
 
 
