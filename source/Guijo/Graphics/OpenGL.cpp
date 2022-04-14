@@ -6,22 +6,40 @@ using namespace Guijo;
 
 #ifdef WIN32
 void Graphics::initialize(HDC hdc) {
-	PIXELFORMATDESCRIPTOR _pfd{};
-	_pfd.nSize = sizeof(PIXELFORMATDESCRIPTOR);
-	_pfd.nVersion = 1;
-	_pfd.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER;
-	_pfd.iPixelType = PFD_TYPE_RGBA;
-	_pfd.cColorBits = 32;
-	_pfd.cDepthBits = 24;
-	_pfd.cStencilBits = 8;
-	_pfd.cAuxBuffers = 0;
-	_pfd.iLayerType = PFD_MAIN_PLANE;
+	static PIXELFORMATDESCRIPTOR _pfd{
+		.nSize = sizeof(PIXELFORMATDESCRIPTOR),
+		.nVersion = 1,
+		.dwFlags = PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+		.iPixelType = PFD_TYPE_RGBA,
+		.cColorBits = 32,
+		.cDepthBits = 24,
+		.cStencilBits = 8,
+		.cAuxBuffers = 0,
+		.iLayerType = PFD_MAIN_PLANE,
+	};
 	auto iPixelFormat = ChoosePixelFormat(hdc, &_pfd);
 	SetPixelFormat(hdc, iPixelFormat, &_pfd);
-	m_Context = wglCreateContext(hdc);
+
 	m_Device = hdc;
-	auto res = wglMakeCurrent(m_Device, m_Context);
-	
+	if (mainContext == nullptr) { // mark first created context as main
+		m_Context = wglCreateContext(hdc); // so we can link other contexts
+		mainContext = this;
+	} else {
+		wglMakeCurrent(mainContext->m_Device, mainContext->m_Context);
+		m_Context = wglCreateContext(hdc);
+		wglShareLists(mainContext->m_Context, m_Context);
+		constexpr bool useSwap = false;
+		if constexpr (useSwap) {
+			typedef BOOL(WINAPI* PFNWGLSWAPINTERVALEXTPROC)(int);
+			PFNWGLSWAPINTERVALEXTPROC wglSwapIntervalEXT = (PFNWGLSWAPINTERVALEXTPROC)
+				wglGetProcAddress("wglSwapIntervalEXT");
+			wglMakeCurrent(m_Device, m_Context);
+			wglSwapIntervalEXT(0);
+		}
+	}
+
+	wglMakeCurrent(m_Device, m_Context);
+
 	constexpr auto ProcLoader = [](const char* name) -> void* {
 		void* p = (void*)wglGetProcAddress(name);
 		if (p == 0 || (p == (void*)0x1) || (p == (void*)0x2)
@@ -39,8 +57,7 @@ void Graphics::initialize(HDC hdc) {
 
 	glEnable(GL_BLEND);
 	glEnable(GL_TEXTURE_2D);
-	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	//glEnable(GL_MULTISAMPLE);
+	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
 	glEnable(GL_SCISSOR_TEST);
 
 	createBuffers();

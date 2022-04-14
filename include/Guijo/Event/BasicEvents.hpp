@@ -34,7 +34,7 @@ namespace Guijo {
     };
 
     struct MouseExit : Event {
-        bool forward(const Object& c) const override { return false; }
+        bool forward(const Object& c) const override { return c.get(Hovering); }
     };
 
     struct Focus : Event {

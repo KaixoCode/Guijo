@@ -5,8 +5,8 @@
 namespace Guijo {
 #ifdef USE_OPENGL
     class Shader {
-        static inline unsigned int current = static_cast<unsigned int>(-1);
     public:
+        static inline unsigned int current = static_cast<unsigned int>(-1);
         unsigned int ID;
 
         Shader(std::string_view vertex, std::string_view frag, std::string_view geo = "");

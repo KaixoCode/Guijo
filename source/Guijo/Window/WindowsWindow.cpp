@@ -88,6 +88,10 @@ bool Window::createWindow(const Construct& c) {
 	else {
 		SetWindowSubclass(m_Handle, windowSubProc, m_Id, (DWORD_PTR)this);
 		SendMessage(m_Handle, WM_CREATE, 0, 0);
+
+		if (m_MainWindow == nullptr) m_MainWindow = this;
+		//else SetWindowLongPtr(m_Handle, GWLP_HWNDPARENT, (LONG)m_MainWindow->m_Handle);
+
 		RECT _rect;
 		if (GetClientRect(m_Handle, &_rect)) {
 			float _x = static_cast<float>(_rect.left);

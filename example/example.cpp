@@ -61,6 +61,9 @@ public:
         std::cout << val << ": Exit!\n";
     }
 
+    std::chrono::steady_clock::time_point start = std::chrono::high_resolution_clock::now();
+    std::chrono::steady_clock::time_point stop = std::chrono::high_resolution_clock::now();
+
     float p[6]{ 0, 0, 0, 0, 0 };
     void draw(DrawContext& context) const override {
         float c = get(Hovering) * 50;
@@ -76,13 +79,23 @@ public:
         context.fill({ 255, 255, 255 });
         context.font(Font::Default);
         context.textAlign(Align::Center);
-        context.text("test", center());
+        context.text(millisstr, center());
 
         context.fill({ 255, 255, 255, 255 });
         for (int i = 0; i < 6; i++) {
             float yp = std::floor(i * height() / 6.);
             context.line({ 0, yp }, { 10, yp });
         }
+
+    }
+
+    float millis = 0;
+    std::string millisstr;
+    void update() override {
+        stop = std::chrono::high_resolution_clock::now();
+        millis = 1. / (std::chrono::duration_cast<std::chrono::microseconds>(stop - start).count() / 1000000.);
+        start = std::chrono::high_resolution_clock::now();
+        millisstr = std::to_string(millis);
     }
 };
 

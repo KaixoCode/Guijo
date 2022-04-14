@@ -18,7 +18,7 @@ namespace Guijo {
 
 		~Graphics();
 	private:
-		static inline HGLRC mainContext = nullptr;
+		static inline Graphics* mainContext = nullptr;
 		static inline HGLRC current = nullptr;
 	    HGLRC m_Context = nullptr;
 		static inline std::mutex m_Lock;
