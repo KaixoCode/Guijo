@@ -14,26 +14,31 @@ namespace Guijo {
         constexpr Pointer(Ty* val) : value(val) {}
         constexpr Pointer(Ty& val) : value(&val) {}
         constexpr Pointer(Pointer&& val) noexcept : value(val.value) { val.value = nullptr; }
-        constexpr Pointer(const Pointer& val) : value(val.value) { value->remember(); }
+        constexpr Pointer(const Pointer& val) : value(val.value) { if (value) value->remember(); }
         constexpr ~Pointer() { if (value) value->forget(); }
 
         constexpr Pointer& operator=(Ty* val) {
-            value->forget(), value = val;
+            if (value) value->forget();
+            value = val;
             return *this;
         }
 
         constexpr Pointer& operator=(Ty& val) {
-            value->forget(), value = &val;
+            if (value) value->forget(); 
+            value = &val;
             return *this;
         }
 
         constexpr Pointer& operator=(Pointer&& val) {
-            value->forget(), value = val.value, val.value = nullptr;
+            if (value) value->forget(); 
+            value = val.value, val.value = nullptr;
             return *this;
         }
 
         constexpr Pointer& operator=(const Pointer& val) {
-            value->forget(), value = val.value, value->remember();
+            if (value) value->forget(); 
+            value = val.value;
+            if (value) value->remember();
             return *this;
         }
 

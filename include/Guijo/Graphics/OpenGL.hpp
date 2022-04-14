@@ -18,8 +18,10 @@ namespace Guijo {
 
 		~Graphics();
 	private:
-		static inline HGLRC current = nullptr;
+		static inline HGLRC mainContext = nullptr;
+		static thread_local inline HGLRC current = nullptr;
 	    HGLRC m_Context = nullptr;
+		static inline std::mutex m_Lock;
 
 #ifdef WIN32
 		HDC m_Device = nullptr;
@@ -30,11 +32,18 @@ namespace Guijo {
 
 		void createBuffers();
 
-		struct { unsigned int vao, vbo; } quad;
-		struct { unsigned int vao, vbo; } textured;
-		struct { unsigned int vao, vbo; } line;
-		struct { unsigned int vao, vbo; } ellipse;
-		struct { unsigned int vao, vbo; } triangle;
-		struct { unsigned int vao, vbo; } text;
+		struct Buffer {
+			unsigned int vao;
+			unsigned int vbo;
+
+			void bind() const;
+		};
+
+		Buffer rect;
+		Buffer textured;
+		Buffer line;
+		Buffer circle;
+		Buffer triangle;
+		Buffer text;
 	};
 }

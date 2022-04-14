@@ -10,20 +10,31 @@ namespace Guijo {
         unsigned int ID;
 
         Shader(std::string_view vertex, std::string_view frag, std::string_view geo = "");
+        
+        inline GLint uniform(std::string_view c) const { return glGetUniformLocation(ID, c.data()); }
+        inline void clean() const { glDeleteProgram(ID); };
+        inline bool use() const { if (current != ID) { glUseProgram(ID), current = ID; return true; } else return false; };
 
-        inline void Clean() const { glDeleteProgram(ID); };
-        inline bool Use() const { if (current != ID) { glUseProgram(ID), current = ID; return true; } else return false; };
-        inline void SetBool(GLint n, bool v) const { glUniform1i(n, (int)v); };
-        inline void SetInt(GLint n, int v) const { glUniform1i(n, v); };
-        inline void SetFloat(GLint n, float v) const { glUniform1f(n, v); };
-        inline void SetFloatA(GLint n, const float* v, const unsigned int a) const { glUniform4fv(n, a, v); };
-        inline void SetIntA(GLint n, const int* v, const unsigned int a) const { glUniform1iv(n, a, v); };
-        inline void SetVec2(GLint n, const glm::vec2& v) const { glUniform2fv(n, 1, &v.x); };
-        inline void SetVec3(GLint n, const glm::vec3& v) const { glUniform3fv(n, 1, &v.x); };
-        inline void SetVec4(GLint n, const glm::vec4& v) const { glUniform4fv(n, 1, &v.x); };
-        inline void SetMat2(GLint n, const glm::mat2& m) const { glUniformMatrix2fv(n, 1, GL_FALSE, &m[0][0]); };
-        inline void SetMat3(GLint n, const glm::mat3& m) const { glUniformMatrix3fv(n, 1, GL_FALSE, &m[0][0]); };
-        inline void SetMat4(GLint n, const glm::mat4& m) const { glUniformMatrix4fv(n, 1, GL_FALSE, &m[0][0]); };
+        struct Assigner {
+            const Shader& self;
+            GLint n;
+
+            inline void operator=(bool v) const { glUniform1i(n, (int)v); };
+            inline void operator=(int v) const { glUniform1i(n, v); };
+            inline void operator=(float v) const { glUniform1f(n, v); };
+            inline void operator=(std::pair<const float*, const unsigned int> a) const { glUniform4fv(n, a.second, a.first); };
+            inline void operator=(std::pair<const int*, const unsigned int> a) const { glUniform1iv(n, a.second, a.first); };
+            inline void operator=(const glm::vec2& v) const { glUniform2fv(n, 1, &v.x); };
+            inline void operator=(const glm::vec3& v) const { glUniform3fv(n, 1, &v.x); };
+            inline void operator=(const glm::vec4& v) const { glUniform4fv(n, 1, &v.x); };
+            inline void operator=(const glm::mat2& m) const { glUniformMatrix2fv(n, 1, GL_FALSE, &m[0][0]); };
+            inline void operator=(const glm::mat3& m) const { glUniformMatrix3fv(n, 1, GL_FALSE, &m[0][0]); };
+            inline void operator=(const glm::mat4& m) const { glUniformMatrix4fv(n, 1, GL_FALSE, &m[0][0]); };
+        };
+
+        inline Assigner operator[](GLint i) const {
+            return { *this, i };
+        }
     };
 #endif
 }

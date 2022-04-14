@@ -118,8 +118,6 @@ void Window::windowsLoop() {
 	update(); // Update cycle
 	
 	m_Graphics.prepare(); // Graphics cycle
-	m_Graphics.context.clip({ 0.f, 0.f, width(), height() });
-	m_Graphics.context.viewport({ 0.f, 0.f, width(), height() });
 	draw(m_Graphics.context);
 	m_Graphics.render();
 	m_Graphics.swapBuffers();

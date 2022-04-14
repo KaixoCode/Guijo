@@ -70,9 +70,9 @@ namespace Guijo {
 
 	struct CommandData {
 		template<std::size_t Ty> CommandData(const Command<Ty>& val)
-			: type(Ty), data(make(val)) {}
+			: type(static_cast<Commands>(Ty)), data(make(val)) {}
 
-		std::size_t type;
+		Commands type;
 		std::unique_ptr<uint8_t[]> data;
 
 		template<std::size_t Ty> Command<Ty>& get() { 

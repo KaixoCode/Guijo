@@ -39,108 +39,52 @@ void Graphics::initialize(HDC hdc) {
 
 	glEnable(GL_BLEND);
 	glEnable(GL_TEXTURE_2D);
-	glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
-	glEnable(GL_MULTISAMPLE);
+	//glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA);
+	//glEnable(GL_MULTISAMPLE);
 	glEnable(GL_SCISSOR_TEST);
 
 	createBuffers();
+
+	wglMakeCurrent(NULL, NULL);
+}
+
+void Graphics::Buffer::bind() const {
+	glBindVertexArray(vao);
 }
 
 void Graphics::createBuffers() {
-	{	// Line
-		constexpr float _vertices[] = {
-			-.5f, -.5f,  .5f, -.5f,
-			-.5f,  .5f,  .5f, -.5f,
-			 .5f,  .5f, -.5f,  .5f,
-		};
-
-		glGenVertexArrays(1, &line.vao);
-		glGenBuffers(1, &line.vbo);
-
-		glBindVertexArray(line.vao);
-
-		glBindBuffer(GL_ARRAY_BUFFER, line.vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
-
+	constexpr auto generate = [](auto& vertices, auto& shape) {
+		glGenVertexArrays(1, &shape.vao);
+		glGenBuffers(1, &shape.vbo);
+		glBindVertexArray(shape.vao);
+		glBindBuffer(GL_ARRAY_BUFFER, shape.vbo);
+		glBufferData(GL_ARRAY_BUFFER, sizeof(vertices), vertices, GL_STATIC_DRAW);
 		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
 		glEnableVertexAttribArray(0);
-	}
-	{	// Quad
-		float _vertices[] = {
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 1.0f, 1.0f, 0.0f,
-			1.0f, 1.0f, 0.0f, 1.0f,
-		};
+	};
 
-		glGenVertexArrays(1, &quad.vao);
-		glGenBuffers(1, &quad.vbo);
+	constexpr float _centered[] {
+		-.5f, -.5f,  .5f, -.5f,
+		-.5f,  .5f,  .5f, -.5f,
+		 .5f,  .5f, -.5f,  .5f,
+	};
 
-		glBindVertexArray(quad.vao);
+	constexpr float _cornered[] {
+		0.0f, 0.0f, 1.0f, 0.0f,
+		0.0f, 1.0f, 1.0f, 0.0f,
+		1.0f, 1.0f, 0.0f, 1.0f,
+	};
 
-		glBindBuffer(GL_ARRAY_BUFFER, quad.vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
-
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-	}
-	{	// Ellipse
-		float _vertices[] = {
-			-.5f, -.5f,  .5f, -.5f,
-			-.5f,  .5f,  .5f, -.5f,
-			 .5f,  .5f, -.5f,  .5f,
-		};
-
-		glGenVertexArrays(1, &ellipse.vao);
-		glGenBuffers(1, &ellipse.vbo);
-
-		glBindVertexArray(ellipse.vao);
-
-		glBindBuffer(GL_ARRAY_BUFFER, ellipse.vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
-
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-	}
-	{	// Triangle
-		float _vertices[] = {
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 1.0f, 1.0f, 0.0f,
-			1.0f, 1.0f, 0.0f, 1.0f,
-		};
-
-		glGenVertexArrays(1, &triangle.vao);
-		glGenBuffers(1, &triangle.vbo);
-
-		glBindVertexArray(triangle.vao);
-
-		glBindBuffer(GL_ARRAY_BUFFER, triangle.vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
-
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-	}
-	{	// Text
-		float _vertices[] = {
-			0.0f, 0.0f, 1.0f, 0.0f,
-			0.0f, 1.0f, 1.0f, 0.0f,
-			1.0f, 1.0f, 0.0f, 1.0f,
-		};
-
-		glGenVertexArrays(1, &text.vao);
-		glGenBuffers(1, &text.vbo);
-
-		glBindVertexArray(text.vao);
-
-		glBindBuffer(GL_ARRAY_BUFFER, text.vbo);
-		glBufferData(GL_ARRAY_BUFFER, sizeof(_vertices), _vertices, GL_STATIC_DRAW);
-		glVertexAttribPointer(0, 2, GL_FLOAT, GL_FALSE, 2 * sizeof(float), (void*)0);
-		glEnableVertexAttribArray(0);
-	}
+	generate(_centered, line);
+	generate(_centered, circle);
+	generate(_cornered, rect);
+	generate(_cornered, triangle);
+	generate(_cornered, text);
 }
 
 void Graphics::prepare() {
 	if (m_Context != current) {
-		wglMakeCurrent(m_Device, m_Context);
+		auto v = wglMakeCurrent(m_Device, m_Context);
 		current = m_Context;
 	}
 
@@ -149,7 +93,8 @@ void Graphics::prepare() {
 }
 
 void Graphics::swapBuffers() {
-	wglSwapLayerBuffers(m_Device, WGL_SWAP_MAIN_PLANE);
+	auto res = wglSwapLayerBuffers(m_Device, WGL_SWAP_MAIN_PLANE);
+	int oaine = res;
 }
 #else
 void Graphics::prepare() {}
@@ -181,8 +126,7 @@ void Graphics::runCommand(Command<PushClip>&) {
 void Graphics::runCommand(Command<PopClip>&) {
 	if (clipStack.size() == 0) {
 		glDisable(GL_SCISSOR_TEST);
-	}
-	else {
+	} else {
 		glEnable(GL_SCISSOR_TEST);
 		Dimensions clip = clipStack.top();
 		clipStack.pop();
@@ -200,25 +144,26 @@ void Graphics::runCommand(Command<Viewport>& v) {
 		std::floor(v.viewport.x() / scaling),
 		std::floor(v.viewport.y() / scaling),
 		std::floor(v.viewport.width() / scaling),
-		std::floor(v.viewport.height() / scaling));
+		std::floor(v.viewport.height() / scaling)
+	);
 }
 
 void Graphics::runCommand(Command<Rect>& v) {
 	auto& [dim, radius, rotation] = v;
 	dim.y(windowSize.height() - dim.y() - dim.height()); // Flip y
 
-	static const Shader _shader{
+	static thread_local const Shader _shader{
 #include <Guijo/Shaders/RectVertex.shader>
 #include <Guijo/Shaders/RectFragment.shader>
 	};
-	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
-	static const GLint uf_dim = glGetUniformLocation(_shader.ID, "dim");
-	static const GLint uf_fillColor = glGetUniformLocation(_shader.ID, "fill");
-	static const GLint uf_strokeColor = glGetUniformLocation(_shader.ID, "stroke");
-	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
-	static const GLint uf_radius = glGetUniformLocation(_shader.ID, "radius");
+	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
+	static thread_local const GLint uf_dim = _shader.uniform("dim");
+	static thread_local const GLint uf_fillColor = _shader.uniform("fill");
+	static thread_local const GLint uf_strokeColor = _shader.uniform("stroke");
+	static thread_local const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
+	static thread_local const GLint uf_radius = _shader.uniform("radius");
 
-	if (_shader.Use()) glBindVertexArray(quad.vao);
+	if (_shader.use()) rect.bind();
 
 	// Adjust 1 pixel for Anti-Aliasing.
 	glm::vec4 _dim{ dim.x() - 1, dim.y() - 1, dim.width() + 2, dim.height() + 2 };
@@ -232,12 +177,12 @@ void Graphics::runCommand(Command<Rect>& v) {
 	}
 	_model = glm::scale(_model, glm::vec3{ _dim.z, _dim.w, 1 });
 
-	_shader.SetMat4(uf_mvp, viewProjection * _model);
-	_shader.SetVec4(uf_dim, _dim);
-	_shader.SetVec4(uf_fillColor, fill);
-	_shader.SetVec4(uf_strokeColor, stroke);
-	_shader.SetFloat(uf_strokeWeight, strokeWeight);
-	_shader.SetVec4(uf_radius, _radius);
+	_shader[uf_mvp] = viewProjection * _model;
+	_shader[uf_dim] = _dim;
+	_shader[uf_fillColor] = fill;
+	_shader[uf_strokeColor] = stroke;
+	_shader[uf_strokeWeight] = strokeWeight;
+	_shader[uf_radius] = _radius;
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -249,17 +194,16 @@ void Graphics::runCommand(Command<Line>& v) {
 	start.y(windowSize.height() - start.y()); // Flip y
 	end.y(windowSize.height() - end.y()); // Flip y
 
-	static const Shader _shader {
+	static thread_local const Shader _shader {
 #include <Guijo/Shaders/LineVertex.shader>
 #include <Guijo/Shaders/LineFragment.shader>
 	};
-	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
-	static const GLint uf_length = glGetUniformLocation(_shader.ID, "length");
-	static const GLint uf_type = glGetUniformLocation(_shader.ID, "type");
-	static const GLint uf_color = glGetUniformLocation(_shader.ID, "color");
+	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
+	static thread_local const GLint uf_length = _shader.uniform("length");
+	static thread_local const GLint uf_type = _shader.uniform("type");
+	static thread_local const GLint uf_color = _shader.uniform("color");
 
-	_shader.Use();
-	glBindVertexArray(line.vao);
+	if (_shader.use()) line.bind();
 
 	const float thickness = strokeWeight / scaling;
 
@@ -275,10 +219,10 @@ void Graphics::runCommand(Command<Line>& v) {
 	_model = glm::rotate(_model, angle, glm::vec3{ 0, 0, 1 });
 	_model = glm::scale(_model, glm::vec3{ length + thickness, thickness + 0.5, 1 });
 
-	_shader.SetMat4(uf_mvp, viewProjection * _model);
-	_shader.SetVec2(uf_length, glm::vec2(length + thickness, thickness));
-	_shader.SetVec4(uf_color, stroke);
-	_shader.SetInt(uf_type, static_cast<int>(cap));
+	_shader[uf_mvp] = viewProjection * _model;
+	_shader[uf_length] = glm::vec2(length + thickness, thickness);
+	_shader[uf_color] = stroke;
+	_shader[uf_type] = static_cast<int>(cap);
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -287,35 +231,31 @@ void Graphics::runCommand(Command<Circle>& v) {
 	auto& [center, radius, angles] = v;
 	center.y(windowSize.height() - center.y()); // Flip y
 
-	static const Shader _shader {
+	static thread_local const Shader _shader {
 #include <Guijo/Shaders/CircleVertex.shader>
 #include <Guijo/Shaders/CircleFragment.shader>
 	};
-	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
-	static const GLint uf_dim = glGetUniformLocation(_shader.ID, "dim");
-	static const GLint uf_fillColor = glGetUniformLocation(_shader.ID, "fill");
-	static const GLint uf_strokeColor = glGetUniformLocation(_shader.ID, "stroke");
-	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
-	static const GLint uf_angles = glGetUniformLocation(_shader.ID, "angles");
+	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
+	static thread_local const GLint uf_dim = _shader.uniform("dim");
+	static thread_local const GLint uf_fillColor = _shader.uniform("fill");
+	static thread_local const GLint uf_strokeColor = _shader.uniform("stroke");
+	static thread_local const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
+	static thread_local const GLint uf_angles = _shader.uniform("angles");
 
-	if (_shader.Use()) glBindVertexArray(ellipse.vao);
+	if (_shader.use()) circle.bind();
 
 	glm::vec4 _dim{ center.x(), center.y(), 2 * radius + 2, 2 * radius + 2 };
 	glm::mat4 _model{ 1.0f };
 	_model = glm::translate(_model, glm::vec3{ _dim.x, _dim.y, 0.f });
 	_model = glm::scale(_model, glm::vec3{ _dim.z, _dim.w, 1 });
 
-	_shader.SetMat4(uf_mvp, viewProjection * _model);
-	_shader.SetVec4(uf_dim, _dim);
-	_shader.SetVec4(uf_fillColor, fill);
-	_shader.SetVec4(uf_strokeColor, stroke);
-	_shader.SetFloat(uf_strokeWeight, strokeWeight);
-
-	if (angles[0] == angles[1]) // same angles, so no cutoff
-		_shader.SetVec2(uf_angles, { 0, std::numbers::pi_v<double> * 2 });
-	else _shader.SetVec2(uf_angles, { angles[1].normalized(), angles[0].normalized() });
+	_shader[uf_mvp] = viewProjection * _model;
+	_shader[uf_dim] = _dim;
+	_shader[uf_fillColor] = fill;
+	_shader[uf_strokeColor] = stroke;
+	_shader[uf_strokeWeight] = strokeWeight;
+	_shader[uf_angles] = { angles[1].normalized(), angles[0].normalized() };
 	
-
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
 
@@ -325,20 +265,20 @@ void Graphics::runCommand(Command<Triangle>& v) {
 	b.y(windowSize.height() - b.y()); // Flip y
 	c.y(windowSize.height() - c.y()); // Flip y
 
-	static const Shader _shader {
+	static thread_local const Shader _shader {
 #include <Guijo/Shaders/TriangleVertex.shader>
 #include <Guijo/Shaders/TriangleFragment.shader>
 	};
-	static const GLint uf_mvp = glGetUniformLocation(_shader.ID, "mvp");
-	static const GLint uf_size = glGetUniformLocation(_shader.ID, "size");
-	static const GLint uf_a = glGetUniformLocation(_shader.ID, "a");
-	static const GLint uf_b = glGetUniformLocation(_shader.ID, "b");
-	static const GLint uf_c = glGetUniformLocation(_shader.ID, "c");
-	static const GLint uf_fill = glGetUniformLocation(_shader.ID, "fill");
-	static const GLint uf_stroke = glGetUniformLocation(_shader.ID, "stroke");
-	static const GLint uf_strokeWeight = glGetUniformLocation(_shader.ID, "strokeWeight");
+	static thread_local const GLint uf_mvp = _shader.uniform("mvp");
+	static thread_local const GLint uf_size = _shader.uniform("size");
+	static thread_local const GLint uf_a = _shader.uniform("a");
+	static thread_local const GLint uf_b = _shader.uniform("b");
+	static thread_local const GLint uf_c = _shader.uniform("c");
+	static thread_local const GLint uf_fill = _shader.uniform("fill");
+	static thread_local const GLint uf_stroke = _shader.uniform("stroke");
+	static thread_local const GLint uf_strokeWeight = _shader.uniform("strokeWeight");
 
-	if (_shader.Use()) glBindVertexArray(triangle.vao);
+	if (_shader.use()) triangle.bind();
 
 	Point<float> _min{
 		std::min({ a.x(), b.x(), c.x() }),
@@ -364,14 +304,14 @@ void Graphics::runCommand(Command<Triangle>& v) {
 	glm::vec2 _b{ b.x() - _min.x(), b.y() - _min.y() };
 	glm::vec2 _c{ c.x() - _min.x(), c.y() - _min.y() };
 
-	_shader.SetMat4(uf_mvp, viewProjection * _model);
-	_shader.SetVec2(uf_size, glm::vec2(_dim.z, _dim.w));
-	_shader.SetVec4(uf_fill, fill);
-	_shader.SetVec4(uf_stroke, stroke);
-	_shader.SetFloat(uf_strokeWeight, strokeWeight);
-	_shader.SetVec2(uf_a, _a);
-	_shader.SetVec2(uf_b, _b);
-	_shader.SetVec2(uf_c, _c);
+	_shader[uf_mvp] = viewProjection * _model;
+	_shader[uf_size] = glm::vec2(_dim.z, _dim.w);
+	_shader[uf_fill] = fill;
+	_shader[uf_stroke] = stroke;
+	_shader[uf_strokeWeight] = strokeWeight;
+	_shader[uf_a] = _a;
+	_shader[uf_b] = _b;
+	_shader[uf_c] = _c;
 
 	glDrawArrays(GL_TRIANGLES, 0, 6);
 }
@@ -380,22 +320,22 @@ void Graphics::runCommand(Command<Text>& v) {
 	auto& [str, pos] = v;
 	pos.y(windowSize.height() - pos.y()); // Flip y
 
-	static const Shader _shader {
+	static thread_local const Shader _shader {
 #include <Guijo/Shaders/TextVertex.shader>
 #include <Guijo/Shaders/TextFragment.shader>
 	};
 
-	static const GLint uf_color = glGetUniformLocation(_shader.ID, "color");
-	static const GLint uf_fontmap = glGetUniformLocation(_shader.ID, "fontmap");
-	static const GLint uf_character = glGetUniformLocation(_shader.ID, "character");
-	static const GLint uf_dim = glGetUniformLocation(_shader.ID, "dim");
+	static thread_local const GLint uf_color = _shader.uniform("color");
+	static thread_local const GLint uf_fontmap = _shader.uniform("fontmap");
+	static thread_local const GLint uf_character = _shader.uniform("character");
+	static thread_local const GLint uf_dim = _shader.uniform("dim");
 
 	// No font selected, so can't render text
 	if (!currentFont) return;
 
 	// For text rendering we use a different blend function
 	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
-	if (_shader.Use()) glBindVertexArray(text.vao);
+	if (_shader.use()) text.bind();
 
 	// Get the character map from the current font
 	auto& _charMap = currentFont->size(std::round(fontSize));
@@ -409,8 +349,8 @@ void Graphics::runCommand(Command<Text>& v) {
 	// Bind the 3d texture for this charmap
 	glActiveTexture(GL_TEXTURE0);
 	glBindTexture(GL_TEXTURE_2D_ARRAY, _charMap.texture);
-	_shader.SetVec4(uf_color, fill);
-	_shader.SetInt(uf_fontmap, 0); // We need to set the texture like this
+	_shader[uf_color] = fill;
+	_shader[uf_fontmap] = 0; // We need to set the texture like this
 
 	// Adjust for non-integer size
 	float _scale = fontSize / std::round(fontSize); 
@@ -445,8 +385,8 @@ void Graphics::runCommand(Command<Text>& v) {
 			_dim.z = fontSize * projection[0].x;
 			_dim.w = fontSize * projection[1].y;
 
-			_shader.SetVec4(uf_dim, _dim);
-			_shader.SetInt(uf_character, _c);
+			_shader[uf_dim] = _dim;
+			_shader[uf_character] = _c;
 
 			glDrawArrays(GL_TRIANGLES, 0, 6);
 		}

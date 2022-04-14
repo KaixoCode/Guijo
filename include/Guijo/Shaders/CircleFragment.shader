@@ -47,7 +47,7 @@ void main() {
     // When fill color alpha is 0, set to stroke color for anti-aliasing, so there's no color blending
     if (fill.w == 0.f) fillColor = vec4(stroke.xyz, 0.0f);
     fragColor = mix(bgColor, mix(fillColor, stroke, borderAlpha), smoothedAlpha);
-    if (angleDiff > angleRange) { // Anti-alias using lines at edge of angle cutoff
+    if (angles.x != angles.y && angleDiff > angleRange) { // Anti-alias using lines at edge of angle cutoff
         vec2 p1 = vec2(0, 0);
         vec2 p2 = vec2(cos(angles.x) * size.x, sin(angles.x) * size.x);
         vec2 p3 = vec2(cos(angles.y) * size.x, sin(angles.y) * size.x);

@@ -3,15 +3,17 @@
 
 using namespace Guijo;
 
-std::map<std::string, Guijo::Font, std::less<>> GraphicsBase::Fonts{};
+thread_local std::map<std::string, Guijo::Font, std::less<>> GraphicsBase::Fonts{};
 
 void GraphicsBase::render() {
     auto& commands = context.m_Commands;
 
     // Make sure clip is entire window at start
-    clip = { -1, -1, windowSize.width() + 2, windowSize.height() + 2};
+    clip = { 0, 0, windowSize.width(), windowSize.height() };
     Command<Clip> _clip{ clip };
+    Command<Viewport> _vp{ clip };
     runCommand(_clip);
+    runCommand(_vp);
 
     while (!commands.empty()) {
         runCommand(commands.front(),

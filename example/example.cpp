@@ -95,19 +95,20 @@ int main() {
 
     Gui gui;
 
-    Window& window = gui.emplace<Window>({ 
-        .name = "HelloWorld",
-        .dimensions{ -1, -1, 500, 500 },
-    });
+    for (int i = 0; i < 3; i++) {
+        Window& window = gui.emplace<Window>({
+            .name = "HelloWorld1",
+            .dimensions{ -1, -1, 500, 500 },
+            });
 
-    Object& container = window.emplace<Object>();
+        Object& container = window.emplace<Object>();
 
-    container.dimensions({ 0, 0, 500, 500 });
+        container.dimensions({ 0, 0, 500, 500 });
 
-    auto& c1 = container.emplace<MyObject>(0);
+        auto& c1 = container.emplace<MyObject>(0);
 
-    c1.dimensions({ 0, 0, 500, 500 });
-
+        c1.dimensions({ 0, 0, 500, 500 });
+    }
     while (gui.loop());
 
     return 0;
