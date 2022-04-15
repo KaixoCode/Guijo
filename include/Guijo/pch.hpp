@@ -48,3 +48,4 @@
 #include <unknwn.h>
 #include <windowsx.h>
 #include <ShlObj_core.h>
+#undef RGB

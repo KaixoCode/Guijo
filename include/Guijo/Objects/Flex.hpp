@@ -5,9 +5,6 @@
 namespace Guijo {
     class Object;
     namespace Flex {
-        enum Values { Auto = -1, None = -2 };
-        using enum Values;
-
         enum class Direction {
             Row,            // left-right
             Column,         // top-bottom
@@ -57,38 +54,44 @@ namespace Guijo {
         struct vh { float value; }; // View height
         struct vw { float value; }; // View width
         struct Box;
-        struct Unit { 
-            enum class Type{ Pixels, Percent, ViewWidth, ViewHeight, Auto, None };
+        struct Value { 
+            enum class Type{ 
+                Infinite = -3, None = -2, Auto = -1, Normal, 
+                Pixels, Percent, ViewWidth, ViewHeight, Content
+            };
             using enum Type;
 
-            constexpr Unit(px v) : value(v.value), type(Pixels) {}
-            constexpr Unit(pc v) : value(v.value), type(Percent) {}
-            constexpr Unit(vh v) : value(v.value), type(ViewHeight) {}
-            constexpr Unit(vw v) : value(v.value), type(ViewWidth) {}
-            constexpr Unit(float v) : value(v), 
-                type(v == Values::Auto ? Auto : v == Values::None ? None : Pixels) {}
+            constexpr Value() : value(0), type(None) {}
+            constexpr Value(px v) : value(v.value), type(Pixels) {}
+            constexpr Value(pc v) : value(v.value), type(Percent) {}
+            constexpr Value(vh v) : value(v.value), type(ViewHeight) {}
+            constexpr Value(vw v) : value(v.value), type(ViewWidth) {}
+            constexpr Value(Type t) : value(0), type(t) {}
+            constexpr Value(float v) : value(v), type(Normal) {}
+
+            constexpr Value& operator=(float v) { value = v, type = Normal; return *this; }
 
             constexpr bool is(Type t) const { return type == t; }
-            constexpr bool definite() const { return type != Auto && type != None; }
+            constexpr bool definite() const { return type != Auto && type != None && type != Infinite; }
 
             Type type;
             float value;
 
-            float decode(Box&, bool dir);
+            Value decode(Box&, Value);
         };
 
         struct Box {
-            Point<Overflow> overflow{ Auto, Auto }; // Overflow
-            Size<Unit> size{ Auto, Auto };          // Prefered size
-            Size<Unit> max{ None, None };           // Maximum size
-            Size<Unit> min{ None, None };           // Minimum size
-            Vec4<Unit> margin{ 0, 0, 0, 0 };        // Margin
-            Vec4<Unit> padding{ 0, 0, 0, 0 };       // Padding
+            Point<Overflow> overflow{ Value::Auto, Value::Auto }; // Overflow
+            Size<Value> size{ Value::Auto, Value::Auto };          // Prefered size
+            Size<Value> max{ Value::None, Value::None };           // Maximum size
+            Size<Value> min{ Value::None, Value::None };           // Minimum size
+            Vec4<Value> margin{ 0, 0, 0, 0 };        // Margin
+            Vec4<Value> padding{ 0, 0, 0, 0 };       // Padding
             Position position = Static;             // Item positioning
 
             struct {
                 Direction direction = Row; // Flex direction
-                Unit basis = Auto;         // prefered size
+                Value basis = Value::Auto; // prefered size
                 float grow = 0;            // Proportion this item can grow relative to other items
                 float shrink = 1;          // Proportion this item can shrink relative to other items
                 Wrap wrap = NoWrap;        // Wrapping mode
@@ -100,21 +103,31 @@ namespace Guijo {
                 Align items = Stretch;   // Align items (Individual Items)
             } align{};
 
-            bool use = false; // Use FlexBox sizing for children
+            bool use = true; // Use FlexBox sizing for children
             
             void format(Object&); // Apply FlexBox formatting to Object
 
-        protected:
-            static inline Size<float> windowSize; // Window size, used with 'vh' and 'vw' units
-            Size<float> finalSize;          // final calculated size
-            Size<float> innerSize;     // final calculated size, taking into account padding
-            float hypoMainSize;        // preferred size of object
-            float outerHypoMainSize;   // preferred size of object
-            Size<float> parentSize;    // Parent size, used with % unit
-            bool invalidated = true;   // Does this box need to be recalculated?
+            // !!Accessing any of these values below is undefined behaviour!!
             
-            void refreshPreferredSize(int axis);
-            friend class Unit;
+            static inline Size<float> windowSize; // Window size, used with 'vh' and 'vw' units
+            Size<Value> availableSize{};     // Available size for items
+            Value flexBaseSize{};            // actual value of flex-base
+            Value outerFlexBaseSize{};       // actual value of flex-base
+            Value hypoMainSize{};            // flex-base clamped to min/max
+            Value outerHypoMainSize{};       // flex-base clamped to min/max + margin
+            Value targetMainSize{};          // target size in flex-line
+            float usedMainSize{};            // definitive size based on flex-line
+            Value hypoCrossSize{};           // 
+            float usedCrossSize{};           // 
+            Box* parent = nullptr;           // Parent size, used with % unit
+            bool violationType = false;      // Min-max violation when resolving flexible sizes
+            bool freezeSize = false;         // Used when resolving flexible sizes in flex-line
+            bool invalidated = true;         // Does this box need to be recalculated?
+            
+
+            void calcAvailableSize();
+            void calcPreferredSize();
+            int flowDirection();
         };
     }
 }

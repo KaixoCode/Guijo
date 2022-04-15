@@ -100,6 +100,7 @@ bool Window::createWindow(const Construct& c) {
 			float _height = static_cast<float>(_rect.bottom - _rect.top);
 			resizeEvent({ _x, _y, _width, _height });
 		}
+
 		return true;
 	}
 }
@@ -119,6 +120,8 @@ bool Window::loop() {
 }
 
 void Window::windowsLoop() {
+	box.format(*this);
+
 	update(); // Update cycle
 	
 	m_Graphics.prepare(); // Graphics cycle

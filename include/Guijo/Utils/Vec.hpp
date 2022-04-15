@@ -107,7 +107,8 @@ namespace Guijo {
         constexpr Ty x() const { return this->get<0>(); }
         constexpr Ty y() const { return this->get<1>(); }
 
-        constexpr operator Vec2<Ty>() const { return *this; }
+        template<class T> constexpr operator Vec2<T>() const { return { static_cast<T>(x()), static_cast<T>(y()) }; }
+        template<class T> constexpr operator Point<T>() const { return { static_cast<T>(x()), static_cast<T>(y()) }; }
 
         constexpr void x(const Ty& v) { this->get<0>() = v; }
         constexpr void y(const Ty& v) { this->get<1>() = v; }
@@ -138,7 +139,8 @@ namespace Guijo {
         constexpr Ty width() const { return this->get<0>(); }
         constexpr Ty height() const { return this->get<1>(); }
 
-        constexpr operator Vec2<Ty>() const { return *this; }
+        template<class T> constexpr operator Vec2<T>() const { return { static_cast<T>(width()), static_cast<T>(height()) }; }
+        template<class T> constexpr operator Size<T>() const { return { static_cast<T>(width()), static_cast<T>(height()) }; }
 
         constexpr void width(const Ty& v) { this->get<0>() = v; }
         constexpr void height(const Ty& v) { this->get<1>() = v; }
@@ -175,7 +177,8 @@ namespace Guijo {
         constexpr virtual Size<Ty> size() const { return { width(), height() }; }
         constexpr virtual Dimensions<Ty> dimensions() const { return *this; }
 
-        constexpr operator Vec4<Ty>() const { return *this; }
+        template<class T> constexpr operator Vec4<T>() const { return { static_cast<T>(x()), static_cast<T>(y()), static_cast<T>(width()), static_cast<T>(height()) }; }
+        template<class T> constexpr operator Dimensions<T>() const { return { static_cast<T>(x()), static_cast<T>(y()), static_cast<T>(width()), static_cast<T>(height()) }; }
 
         constexpr virtual void x(const Ty& v) { this->get<0>() = v; }
         constexpr virtual void y(const Ty& v) { this->get<1>() = v; }
