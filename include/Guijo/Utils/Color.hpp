@@ -291,6 +291,8 @@ namespace Guijo {
         constexpr RGB() : Parent{ {} } {}
         constexpr RGB(const Ty& h, const Ty& s, const Ty& v, const Ty& a) : Parent{ h, s, v, a } {}
         constexpr RGB(const Ty& h, const Ty& s, const Ty& v) : Parent{ h, s, v, 255 } {}
+        constexpr RGB(const Ty& g, const Ty& a) : Parent{ g, g, g, a } {}
+        constexpr RGB(const Ty& g) : Parent{ g, g, g, 255 } {}
         constexpr RGB(const HSV<Ty>& v) { *this = detail::hsv2rgb(v); }
         constexpr RGB(const HSL<Ty>& v) { *this = detail::hsl2rgb(v); }
         constexpr RGB(int hex) : Parent{

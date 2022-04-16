@@ -56,8 +56,8 @@ namespace Guijo {
         struct Box;
         struct Value { 
             enum class Type{ 
-                Infinite = -3, None = -2, Auto = -1, Normal, Enum,
-                Pixels, Percent, ViewWidth, ViewHeight, Content
+                Infinite = -3, None = -2, Auto = -1, Enum,
+                Pixels, Percent, ViewWidth, ViewHeight
             };
             using enum Type;
 
@@ -67,26 +67,42 @@ namespace Guijo {
             constexpr Value(vh v) : value(v.value), type(ViewHeight) {}
             constexpr Value(vw v) : value(v.value), type(ViewWidth) {}
             constexpr Value(Type t) : value(0), type(t) {}
-            constexpr Value(float v) : value(v), type(Normal) {}
+            constexpr Value(float v) : value(v), type(Pixels) {}
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr Value(Ty val) : value(static_cast<float>(val)), type(Enum) {}
+            constexpr Value(const Value& v) : value(v.value), type(v.type) {}
+            constexpr Value(Value&& v) : value(v.value), type(v.type) {}
 
-            constexpr Value& operator=(float v) { value = v, type = Normal; return *this; }
+            Value& operator=(const Value& v) { trigger(v.value, v.type); return *this; }
+            Value& operator=(Value&& v) { trigger(v.value, v.type); return *this; }
+            Value& operator=(px v) { trigger(v.value, Pixels); return *this; }
+            Value& operator=(pc v) { trigger(v.value, Percent); return *this; }
+            Value& operator=(vh v) { trigger(v.value, ViewHeight); return *this; }
+            Value& operator=(vw v) { trigger(v.value, ViewWidth); return *this; }
+            Value& operator=(Type v) { trigger(0, v); return *this; }
+            Value& operator=(float v) { trigger(v, Pixels); return *this; }
+            template<class Ty> requires std::is_enum_v<Ty>
+            Value& operator=(Ty val) { trigger(static_cast<float>(val), Enum); return *this; }
 
             constexpr bool is(Type t) const { return type == t; }
             constexpr bool definite() const { return type != Auto && type != None && type != Infinite; }
 
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr bool operator==(Ty val) { return static_cast<float>(val) == value && type == Enum; }
-            template<class Ty> requires std::is_enum_v<Ty>
-            constexpr Value& operator=(Ty val) { value = static_cast<float>(val), type = Enum; return *this; }
 
-            constexpr operator float() const { return value; }
+            operator float() { return current(); }
+            float get() { return current(); }
 
-            Type type;
-            float value;
+            float transition = 0; // milliseconds
 
             Value decode(Box&, Value);
+        private:
+            Type type;
+            float value;
+            float pvalue = value;
+            std::chrono::steady_clock::time_point m_ChangeTime{};
+            float current();
+            void trigger(float, Type);
         };
 
         struct Box {
@@ -94,15 +110,15 @@ namespace Guijo {
             Size<Value> size{ Value::Auto, Value::Auto };      // Prefered size
             Size<Value> max{ Value::None, Value::None };       // Maximum size
             Size<Value> min{ Value::None, Value::None };       // Minimum size
-            Vec4<Value> margin{ 0, 0, 0, 0 };        // Margin
-            Vec4<Value> padding{ 0, 0, 0, 0 };       // Padding
-            Position position = Static;             // Item positioning
+            Vec4<Value> margin{ 0, 0, 0, 0 };  // Margin
+            Vec4<Value> padding{ 0, 0, 0, 0 }; // Padding
+            Position position = Static;        // Item positioning
 
             struct {
                 Value direction = Row;     // Flex direction
                 Value basis = Value::Auto; // prefered size
-                float grow = 0;            // Proportion this item can grow relative to other items
-                float shrink = 1;          // Proportion this item can shrink relative to other items
+                Value grow = 0;            // Proportion this item can grow relative to other items
+                Value shrink = 1;          // Proportion this item can shrink relative to other items
                 Wrap wrap = NoWrap;        // Wrapping mode
             } flex{};
 

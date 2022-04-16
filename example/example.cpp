@@ -9,7 +9,14 @@ class MyObject : public Object {
 public:
     Color color{};
 
-    MyObject(Color color) : color(color) {}
+    MyObject(Color color) : color(color) {
+        box.margin[0].transition = 100;
+        box.margin[1].transition = 100;
+        box.margin[2].transition = 100;
+        box.margin[3].transition = 100;
+        box.size[0].transition = 100;
+        box.size[1].transition = 100;
+    }
 
     void draw(DrawContext& context) const override {
         if (get(Pressed)) context.fill(color.brighter(0.6));
@@ -19,10 +26,27 @@ public:
 
         context.rect(dimensions());
     }
+
+    bool hovering = false;
+    void update() {
+        if (get(Hovering)) {
+            if (!hovering) {
+                hovering = true;
+                box.margin = { 10.f, 10.f, 10.f, 10.f };
+                box.size = { 140.f, 50.f };
+            }
+        } else {
+            if (hovering) {
+                hovering = false;
+                box.margin = { 10.f, 10.f, 10.f, 10.f };
+                box.size = { 50.f, 50.f };
+            }
+        }
+    }
 };
 
 constexpr Flex::Box class1{
-    .size{ Flex::Value::Auto, 50.f },
+    .size{ 50.f, 50.f },
     .margin{ 10.f, 10.f, 10.f, 10.f },
     .flex {
         .grow = 1,
@@ -34,7 +58,7 @@ constexpr Flex::Box class1{
 };
 
 constexpr Flex::Box class2{
-    .size{ 100.f, 50.f},
+    .size{ 50.f, 50.f},
     .min{ 50.f, Flex::Value::None },
     .margin{ 10.f, 10.f, 10.f, 10.f },
     .flex {
@@ -71,12 +95,12 @@ int main() {
     window.box.align.items = Flex::Align::Start;
 
     Pointer<Object> obj[]{
-        window.emplace<MyObject>(Color{ 128,   0, 128 }),
-        window.emplace<MyObject>(Color{ 128, 255,   0 }),
-        window.emplace<MyObject>(Color{ 128, 255, 128 }),
-        window.emplace<MyObject>(Color{ 255,   0,   0 }),
-        window.emplace<MyObject>(Color{   0, 255, 128 }),
-        window.emplace<MyObject>(Color{   0, 128, 255 }),
+        window.emplace<MyObject>(Color{ 240.f }),
+        window.emplace<MyObject>(Color{ 210.f }),
+        window.emplace<MyObject>(Color{ 180.f }),
+        window.emplace<MyObject>(Color{ 150.f }),
+        window.emplace<MyObject>(Color{ 120.f }),
+        window.emplace<MyObject>(Color{  90.f }),
     };
 
     obj[0]->box = class2;

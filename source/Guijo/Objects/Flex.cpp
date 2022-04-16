@@ -7,19 +7,38 @@ using namespace Flex;
 Value Value::decode(Box& obj, Value pval) {
     switch (type) {
     // Normal/Pixels is just the value
-    case Normal:
-    case Pixels: return value;
+    case Pixels: return get();
     // Percent uses parent size
     case Percent: // If pval is percent or indefinite, we don't know...
-        if (!pval.is(Percent) && pval.definite()) return pval.value * value / 100.;
+        if (!pval.is(Percent) && pval.definite()) return pval.get() * get() / 100.;
         else return { Value::Infinite };
     // View width and height are percent of window size
-    case ViewWidth: return obj.windowSize.width() * value / 100.;
-    case ViewHeight: return obj.windowSize.height() * value / 100.;
+    case ViewWidth: return obj.windowSize.width() * get() / 100.;
+    case ViewHeight: return obj.windowSize.height() * get() / 100.;
     // Remain at current value if we can't decode
     default: return *this;
     }
 }
+
+float Value::current() {
+    if (transition == 0) return value;
+
+    const auto _now = std::chrono::steady_clock::now();
+    const auto _duration = std::chrono::duration_cast<std::chrono::milliseconds>(_now - m_ChangeTime).count();
+    const float _percent = std::clamp(_duration / transition, 0.f, 1.f);
+
+    return pvalue * (1.f - _percent) + value * _percent;
+}
+
+void Value::trigger(float newval, Type newtype) {
+    pvalue = current();
+    value = newval;
+    // If change of type, don't transition
+    if (newtype != type) 
+        type = newtype, pvalue = value;
+    m_ChangeTime = std::chrono::steady_clock::now();
+}
+
 
 int Box::flowDirection() {
     return flex.direction == Direction::Column
@@ -43,8 +62,8 @@ void Box::calcAvailableSize() {
         else return Value::Infinite; // Fallback to infinite size
 
         // Constrain size to min/max if definite
-        if (_min.definite()) _value = std::max(_value.value, _min.value);
-        if (_max.definite()) _value = std::min(_value.value, _max.value);
+        if (_min.definite()) _value = std::max(_value.get(), _min.get());
+        if (_max.definite()) _value = std::min(_value.get(), _max.get());
 
         return _value;
     };
@@ -63,8 +82,8 @@ Value Box::addPadding(Value value, int dim, Value pval) {
     Value _padding2 = padding[dim + 2].decode(*this, pval);
 
     // Finally adjust for padding, since we need available size for children
-    if (_padding1.definite()) value = value.value + _padding1.value;
-    if (_padding2.definite()) value = value.value + _padding2.value;
+    if (_padding1.definite()) value = value + _padding1;
+    if (_padding2.definite()) value = value + _padding2;
     return value;
 }
 
@@ -73,8 +92,8 @@ Value Box::addMargin(Value value, int dim, Value pval) {
     Value _margin2 = margin[dim + 2].decode(*this, pval);
 
     // Finally adjust for padding, since we need available size for children
-    if (_margin1.definite()) value = value.value + _margin1.value;
-    if (_margin2.definite()) value = value.value + _margin2.value;
+    if (_margin1.definite()) value = value + _margin1;
+    if (_margin2.definite()) value = value + _margin2;
     return value;
 }
 Value Box::subPadding(Value value, int dim, Value pval) {
@@ -82,8 +101,8 @@ Value Box::subPadding(Value value, int dim, Value pval) {
     Value _padding2 = padding[dim + 2].decode(*this, pval);
 
     // Finally adjust for padding, since we need available size for children
-    if (_padding1.definite()) value = value.value - _padding1.value;
-    if (_padding2.definite()) value = value.value - _padding2.value;
+    if (_padding1.definite()) value = value - _padding1;
+    if (_padding2.definite()) value = value - _padding2;
     return value;
 }
 
@@ -92,8 +111,8 @@ Value Box::subMargin(Value value, int dim, Value pval) {
     Value _margin2 = margin[dim + 2].decode(*this, pval);
 
     // Finally adjust for padding, since we need available size for children
-    if (_margin1.definite()) value = value.value - _margin1.value;
-    if (_margin2.definite()) value = value.value - _margin2.value;
+    if (_margin1.definite()) value = value - _margin1;
+    if (_margin2.definite()) value = value - _margin2;
     return value;
 }
 
@@ -102,8 +121,8 @@ Value clamp(Box& self, const Value& pval, Value v, Value min, Value max) {
     auto _min = min.decode(self, pval);
     auto _max = max.decode(self, pval);
     if (!_v.definite()) return _v;
-    if (_min.definite()) v = std::max(_min.value, v.value);
-    if (_max.definite()) v = std::min(_max.value, v.value);
+    if (_min.definite()) v = std::max(_min.get(), v.get());
+    if (_max.definite()) v = std::min(_max.get(), v.get());
     return v;
 }
 
@@ -323,7 +342,7 @@ void Box::format(Object& self) {
                     if (_item.freezeSize) continue; // ignore frozen
                     _sumFlexFactor += _type == Shrink 
                         ? _item.flex.shrink * _item.flexBaseSize
-                        : _item.flex.grow;
+                        : static_cast<float>(_item.flex.grow);
                 }
                 // Adjust size of items proportional to their 
                 // flex-factor using the flex-factor sum
@@ -432,16 +451,16 @@ void Box::format(Object& self) {
     if (_flexLines.size() == 1) { 
         auto _min = min[_cross].decode(*this, _parentSize[_cross]);
         auto _max = max[_cross].decode(*this, _parentSize[_cross]);
-        if (_min.definite()) _flexLines[0].crossSize = std::max(_flexLines[0].crossSize, _min.value);
-        if (_max.definite()) _flexLines[0].crossSize = std::min(_flexLines[0].crossSize, _max.value);
+        if (_min.definite()) _flexLines[0].crossSize = std::max(_flexLines[0].crossSize, static_cast<float>(_min));
+        if (_max.definite()) _flexLines[0].crossSize = std::min(_flexLines[0].crossSize, static_cast<float>(_max));
     }
 
     // Handle align-content: stretch, divide leftover space to lines equaly
     if (align.content == Align::Stretch && _innerCrossSize.definite()) {
         float _sumCrossSize = 0; // Find sum of cross sizes
         for (auto& _line : _flexLines) _sumCrossSize += _line.crossSize;
-        if (_sumCrossSize < _innerCrossSize.value) { // If space leftover, add equal portion to all lines
-            float _addToCrossSize = (_innerCrossSize.value - _sumCrossSize) / _flexLines.size();
+        if (_sumCrossSize < _innerCrossSize) { // If space leftover, add equal portion to all lines
+            float _addToCrossSize = (_innerCrossSize - _sumCrossSize) / _flexLines.size();
             for (auto& _line : _flexLines) _line.crossSize += _addToCrossSize;
         }
     }
@@ -459,18 +478,18 @@ void Box::format(Object& self) {
             if (_selfAlign == Align::Stretch && 
                 _item->box.size[_cross].is(Value::Auto)) { 
                 _item->box.usedSize[_cross] = _line.crossSize
-                    - _item->box.margin[_cross].value
-                    - _item->box.margin[_cross + 2].value;
+                    - _item->box.margin[_cross]
+                    - _item->box.margin[_cross + 2];
                 _item->box.format(*_item); // Format again with new size
             } else { // No stretch, just use hypothetical-cross-size
-                _item->box.usedSize[_cross] = _item->box.hypoSize[_cross].value;
+                _item->box.usedSize[_cross] = _item->box.hypoSize[_cross];
             }
         }
     }
 
     // Determine container's used cross size
     auto _calcCrossSize = size[_cross].decode(*this, _parentSize[_cross]);
-    if (_calcCrossSize.definite()) usedSize[_cross] = _calcCrossSize.value;
+    if (_calcCrossSize.definite()) usedSize[_cross] = _calcCrossSize;
     else usedSize[_cross] = _usedCrossSpace;
     // Clamp to min/max
     usedSize[_cross] = clamp(*this, _parentSize[_cross], 
@@ -502,12 +521,12 @@ void Box::format(Object& self) {
     // Determine the flex-direction
     Direction _direction = Direction::Row;
     if (flex.direction.is(Value::Enum))
-        _direction = static_cast<Direction>(flex.direction.value);
+        _direction = static_cast<Direction>(static_cast<float>(flex.direction));
 
     // handle align-content
     Align _content = Align::Start;
     if (align.content.is(Value::Enum))
-        _content = static_cast<Align>(align.content.value);
+        _content = static_cast<Align>(static_cast<float>(align.content));
     float _crossStart = 0, _crossDistance = 0, _crossDir = 1;
     switch (_content) {
     case Align::Start:
@@ -555,7 +574,7 @@ void Box::format(Object& self) {
         // handle justify-content
         Justify _justify = Justify::Start;
         if (justify.is(Value::Enum))
-            _justify = static_cast<Justify>(justify.value);
+            _justify = static_cast<Justify>(static_cast<float>(justify));
         float _mainStart = 0, _mainDistance = 0, _mainDir = 1;
         switch (_justify) {
         case Justify::Start: 
@@ -599,9 +618,9 @@ void Box::format(Object& self) {
             // Handle align-self, or align-items if align-self: auto
             Align _selfAlign = Align::Stretch;
             if (_item->box.align.self.is(Value::Enum))
-                _selfAlign = static_cast<Align>(_item->box.align.self.value); // Find self align
+                _selfAlign = static_cast<Align>(static_cast<float>(_item->box.align.self)); // Find self align
             else if (_item->box.align.self.is(Value::Auto)) // if auto, use container's item align
-                _selfAlign = static_cast<Align>(align.items.value);
+                _selfAlign = static_cast<Align>(static_cast<float>(align.items));
             float _crossOffset = 0;
             switch (_selfAlign) {
             case Align::End:
