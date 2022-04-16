@@ -8,8 +8,8 @@ out vec2 fragCoord;
 out vec2 size;
 
 void main() {
-	gl_Position = mvp * vec4(aPos.x, aPos.y, 0.0, 1.0);
-	fragCoord = vec2(aPos.x * dim.z, aPos.y * dim.w); // Coordinate in pixels
-	size = vec2(dim.z, dim.w); // Size in pixels
+    gl_Position = mvp * vec4(aPos.x, aPos.y, 0.0, 1.0);
+    fragCoord = vec2(aPos.x * dim.z, aPos.y * dim.w); // Coordinate in pixels
+    size = vec2(dim.z, dim.w); // Size in pixels
 }
 )

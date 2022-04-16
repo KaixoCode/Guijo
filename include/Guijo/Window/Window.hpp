@@ -3,28 +3,28 @@
 #include "Guijo/Event/BasicEvents.hpp"
 
 namespace Guijo {
-	class WindowBase : public Object {
-	public:
-		struct Construct {
-			std::string_view name;
-			Dimensions<float> dimensions{ -1, -1, -1, -1 };
-		};
+    class WindowBase : public Object {
+    public:
+        struct Construct {
+            std::string_view name;
+            Dimensions<float> dimensions{ -1, -1, -1, -1 };
+        };
 
-		WindowBase() = default;
-		WindowBase(WindowBase&&) = delete;
-		WindowBase(const WindowBase&) = delete;
+        WindowBase() = default;
+        WindowBase(WindowBase&&) = delete;
+        WindowBase(const WindowBase&) = delete;
 
-		virtual bool loop() = 0;
+        virtual bool loop() = 0;
 
-		struct CursorState {
-			MouseButtons buttons = 0;
-			Point<float> position{ 0, 0 };
-			Point<float> pressed{ 0, 0 };
-		} cursor;
+        struct CursorState {
+            MouseButtons buttons = 0;
+            Point<float> position{ 0, 0 };
+            Point<float> pressed{ 0, 0 };
+        } cursor;
 
-	protected:
-		Graphics m_Graphics{};
-	};
+    protected:
+        Graphics m_Graphics{};
+    };
 }
 
 #ifdef WIN32

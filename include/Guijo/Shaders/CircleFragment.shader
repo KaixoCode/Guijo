@@ -23,8 +23,8 @@ float distance_point_line(vec2 p, vec2 v, vec2 w) {
 }
 
 void main() {
-	vec2 size = dim.zw;
-	vec2 pos = fragCoord.xy;
+    vec2 size = dim.zw;
+    vec2 pos = fragCoord.xy;
     float dist = distance(vec2(0.f, 0.f), pos);
     float angle = acos(pos.x / dist);
     if (0.f > pos.y) angle = 6.28318530718f - angle;
