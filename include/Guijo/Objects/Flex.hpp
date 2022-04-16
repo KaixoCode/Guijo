@@ -56,7 +56,7 @@ namespace Guijo {
         struct Box;
         struct Value { 
             enum class Type{ 
-                Infinite = -3, None = -2, Auto = -1, Normal, 
+                Infinite = -3, None = -2, Auto = -1, Normal, Enum,
                 Pixels, Percent, ViewWidth, ViewHeight, Content
             };
             using enum Type;
@@ -68,11 +68,20 @@ namespace Guijo {
             constexpr Value(vw v) : value(v.value), type(ViewWidth) {}
             constexpr Value(Type t) : value(0), type(t) {}
             constexpr Value(float v) : value(v), type(Normal) {}
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr Value(Ty val) : value(static_cast<float>(val)), type(Enum) {}
 
             constexpr Value& operator=(float v) { value = v, type = Normal; return *this; }
 
             constexpr bool is(Type t) const { return type == t; }
             constexpr bool definite() const { return type != Auto && type != None && type != Infinite; }
+
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr bool operator==(Ty val) { return static_cast<float>(val) == value && type == Enum; }
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr Value& operator=(Ty val) { value = static_cast<float>(val), type = Enum; return *this; }
+
+            constexpr operator float() { return value; }
 
             Type type;
             float value;
@@ -81,26 +90,27 @@ namespace Guijo {
         };
 
         struct Box {
-            Point<Overflow> overflow{ Value::Auto, Value::Auto }; // Overflow
-            Size<Value> size{ Value::Auto, Value::Auto };          // Prefered size
-            Size<Value> max{ Value::None, Value::None };           // Maximum size
-            Size<Value> min{ Value::None, Value::None };           // Minimum size
+            Point<Value> overflow{ Value::Auto, Value::Auto }; // Overflow
+            Size<Value> size{ Value::Auto, Value::Auto };      // Prefered size
+            Size<Value> max{ Value::None, Value::None };       // Maximum size
+            Size<Value> min{ Value::None, Value::None };       // Minimum size
             Vec4<Value> margin{ 0, 0, 0, 0 };        // Margin
             Vec4<Value> padding{ 0, 0, 0, 0 };       // Padding
             Position position = Static;             // Item positioning
 
             struct {
-                Direction direction = Row; // Flex direction
+                Value direction = Row;     // Flex direction
                 Value basis = Value::Auto; // prefered size
                 float grow = 0;            // Proportion this item can grow relative to other items
                 float shrink = 1;          // Proportion this item can shrink relative to other items
                 Wrap wrap = NoWrap;        // Wrapping mode
             } flex{};
 
-            Justify justify = Start; // Justify content (inline)
+            Value justify = Start; // Justify content (inline)
             struct {
-                Align content = Stretch; // Align content (block)
-                Align items = Stretch;   // Align items (Individual Items)
+                Value content = Stretch; // Align content (block)
+                Value items = Stretch;   // Align items (Individual Items)
+                Value self = Stretch;    // Align self
             } align{};
 
             bool use = true; // Use FlexBox sizing for children
@@ -110,24 +120,25 @@ namespace Guijo {
             // !!Accessing any of these values below is undefined behaviour!!
             
             static inline Size<float> windowSize; // Window size, used with 'vh' and 'vw' units
-            Size<Value> availableSize{};     // Available size for items
-            Value flexBaseSize{};            // actual value of flex-base
-            Value outerFlexBaseSize{};       // actual value of flex-base
-            Value hypoMainSize{};            // flex-base clamped to min/max
-            Value outerHypoMainSize{};       // flex-base clamped to min/max + margin
-            Value targetMainSize{};          // target size in flex-line
-            float usedMainSize{};            // definitive size based on flex-line
-            Value hypoCrossSize{};           // 
-            float usedCrossSize{};           // 
-            Box* parent = nullptr;           // Parent size, used with % unit
-            bool violationType = false;      // Min-max violation when resolving flexible sizes
-            bool freezeSize = false;         // Used when resolving flexible sizes in flex-line
-            bool invalidated = true;         // Does this box need to be recalculated?
+            Size<Value> innerAvailableSize{}; // Available size for items (either infinite or definite)
+            Size<Value> availableSize{};      // Available size for itself
+            Value flexBaseSize{};             // actual value of flex-base
+            Value outerFlexBaseSize{};        // actual value of flex-base + margin
+            Size<Value> hypoSize{};           // flex-base clamped to min/max
+            Size<Value> outerHypoSize{};      // flex-base clamped to min/max + margin
+            Size<Value> targetSize{};         // target size in flex-line
+            Size<Value> usedSize{};           // definitive size based on flex-line
+            Box* parent = nullptr;            // Parent size, used with % unit
+            bool violationType = false;       // Min-max violation when resolving flexible sizes
+            bool freezeSize = false;          // Used when resolving flexible sizes in flex-line
+            bool invalidated = true;          // Does this box need to be recalculated?
             
-
             void calcAvailableSize();
-            void calcPreferredSize();
             int flowDirection();
+            Value addPadding(Value, int, Value);
+            Value addMargin(Value, int, Value);
+            Value subPadding(Value, int, Value);
+            Value subMargin(Value, int, Value);
         };
     }
 }

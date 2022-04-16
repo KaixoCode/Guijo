@@ -27,6 +27,7 @@ Object::Object() {
     // Handle pressed state
     state<[](const MousePress&, Object& c) { return c.get(Hovering); }>(Pressed);
     state<[](const MouseRelease&, Object&) { return false; }>(Pressed);
+    state<[](const MouseExit&, Object&) { return false; }>(Hovering);
 }
 
 void Object::draw(DrawContext& context) const {

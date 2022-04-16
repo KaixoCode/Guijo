@@ -12,7 +12,7 @@ Value Value::decode(Box& obj, Value pval) {
 	// Percent uses parent size
 	case Percent: // If pval is percent or indefinite, we don't know...
 		if (!pval.is(Percent) && pval.definite()) return pval.value * value / 100.;
-		else return pval;
+		else return { Value::Infinite };
 	// View width and height are percent of window size
 	case ViewWidth: return obj.windowSize.width() * value / 100.;
 	case ViewHeight: return obj.windowSize.height() * value / 100.;
@@ -29,86 +29,154 @@ int Box::flowDirection() {
 
 void Box::calcAvailableSize() {
 	auto _checkDim = [this](int dim) -> Value {
-		// If parent is flex-container, and dimensions is flow direction
-		// at this point we already know the usedMainSize of this item
-		if (parent->use && dim == parent->flowDirection()) return usedMainSize;
-		// Otherwise try parentSize/definite size
-		auto& _parentSize = parent->availableSize[dim];
 		Value _value{};
-		Value _size = size[dim].decode(*this, _parentSize);
-		Value _min = min[dim].decode(*this, _parentSize);
-		Value _max = max[dim].decode(*this, _parentSize);
+		Value _parent = parent->innerAvailableSize[dim];
+		Value _size = size[dim].decode(*this, _parent);
+		Value _min = min[dim].decode(*this, _parent);
+		Value _max = max[dim].decode(*this, _parent);
+		Value _margin1 = margin[dim].decode(*this, _parent);
+		Value _margin2 = margin[dim + 2].decode(*this, _parent);
 
-		if (_size.definite()) _value = _size;
-		else if (_parentSize.definite()) {
-			Value _padding = padding[dim].decode(*this, _parentSize);
-			_value = _parentSize;
-			if (_padding.definite()) _value = _value.value - _padding.value;
-		} else return Value::Infinite;
+		// If used size is definite, content box has been defined for that dimension, so use that
+		if (parent->use && usedSize[dim].definite()) _value = usedSize[dim];
+		else if (parent->use && usedSize[dim].definite()) _value = usedSize[dim];
+		else if (_size.definite()) _value = _size;
+		else if (_parent.definite()) _value = subMargin(_parent, dim, _parent);
+		else return Value::Infinite; // Fallback to infinite size
 
-		Value _margin = margin[dim].decode(*this, _parentSize);
-		if (_margin.definite()) _value = _value.value - _margin.value;
+		// Constrain size to min/max if definite
+		if (_min.definite()) _value = std::max(_value.value, _min.value);
+		if (_max.definite()) _value = std::min(_value.value, _max.value);
 
-		if (_min.definite() && _max.definite()) // Try constraints
-			_value = std::clamp(_value.value, _min.value, _max.value);
-		else if (_min.definite()) _value = std::max(_value.value, _min.value);
-		else if (_max.definite()) _value = std::min(_value.value, _max.value);
-		
 		return _value;
 	};
+
 	if (parent == nullptr) availableSize = windowSize; // No parent at all: use window size
 	else availableSize = { _checkDim(0), _checkDim(1) };
-	
+
+	innerAvailableSize = { 
+		subPadding(availableSize[0], 0, parent ? parent->innerAvailableSize[0] : Value::Infinite),
+		subPadding(availableSize[1], 0, parent ? parent->innerAvailableSize[1] : Value::Infinite)
+	};
 }
 
-void Box::calcPreferredSize() {
-	auto _dim = parent->flowDirection();
-	auto& _parentSize = parent->availableSize[_dim];
-	if (flex.basis.definite()) flexBaseSize = flex.basis.decode(*this, _parentSize);
-	else if (size[_dim].definite()) flexBaseSize = size[_dim].decode(*this, _parentSize);
-	else flexBaseSize = 0.f;
-	// hypoMainSize is flexBaseSize clamped to min/max values
-	hypoMainSize = flexBaseSize;
-	if (min[_dim].definite()) hypoMainSize = std::max(min[_dim].decode(*this, _parentSize).value, hypoMainSize.value);
-	if (max[_dim].definite()) hypoMainSize = std::min(max[_dim].decode(*this, _parentSize).value, hypoMainSize.value);
-	// outerHypoMainSize is hypoMainSize + margin
-	outerHypoMainSize = hypoMainSize;
-	if (margin[_dim].definite()) outerHypoMainSize.value += margin[_dim].decode(*this, _parentSize).value;
-	if (margin[_dim * 2].definite()) outerHypoMainSize.value += margin[_dim * 2].decode(*this, _parentSize).value;
-	// outerFlexBaseSize is flexBaseSize + margin
-	outerFlexBaseSize = flexBaseSize;
-	if (margin[_dim].definite()) outerFlexBaseSize.value += margin[_dim].decode(*this, _parentSize).value;
-	if (margin[_dim * 2].definite()) outerFlexBaseSize.value += margin[_dim * 2].decode(*this, _parentSize).value;
+Value Box::addPadding(Value value, int dim, Value pval) {
+	Value _padding1 = padding[dim].decode(*this, pval);
+	Value _padding2 = padding[dim + 2].decode(*this, pval);
+
+	// Finally adjust for padding, since we need available size for children
+	if (_padding1.definite()) value = value.value + _padding1.value;
+	if (_padding2.definite()) value = value.value + _padding2.value;
+	return value;
+}
+
+Value Box::addMargin(Value value, int dim, Value pval) {
+	Value _margin1 = margin[dim].decode(*this, pval);
+	Value _margin2 = margin[dim + 2].decode(*this, pval);
+
+	// Finally adjust for padding, since we need available size for children
+	if (_margin1.definite()) value = value.value + _margin1.value;
+	if (_margin2.definite()) value = value.value + _margin2.value;
+	return value;
+}
+Value Box::subPadding(Value value, int dim, Value pval) {
+	Value _padding1 = padding[dim].decode(*this, pval);
+	Value _padding2 = padding[dim + 2].decode(*this, pval);
+
+	// Finally adjust for padding, since we need available size for children
+	if (_padding1.definite()) value = value.value - _padding1.value;
+	if (_padding2.definite()) value = value.value - _padding2.value;
+	return value;
+}
+
+Value Box::subMargin(Value value, int dim, Value pval) {
+	Value _margin1 = margin[dim].decode(*this, pval);
+	Value _margin2 = margin[dim + 2].decode(*this, pval);
+
+	// Finally adjust for padding, since we need available size for children
+	if (_margin1.definite()) value = value.value - _margin1.value;
+	if (_margin2.definite()) value = value.value - _margin2.value;
+	return value;
+}
+
+Value clamp(Box& self, const Value& pval, Value v, Value min, Value max) {
+	auto _v = v.decode(self, pval);
+	auto _min = min.decode(self, pval);
+	auto _max = max.decode(self, pval);
+	if (!_v.definite()) return _v;
+	if (_min.definite()) v = std::max(_min.value, v.value);
+	if (_max.definite()) v = std::min(_max.value, v.value);
+	return v;
 }
 
 void Box::format(Object& self) {
-	auto& _container = self.box;
 	auto& _items = self.objects();
 
-	if (!_container.use) { // Don't use flex
-		_container.availableSize = self.size(); // Use its manually set size
-		for (auto& _c : _items) {
-			_c->box.parent = &_container; // No flex parent
-			_c->box.format(*_c);
+	// Step 1: calculate available size in container
+	calcAvailableSize();
+
+	// Parent doesn't exist or doesn't give us a size, use own size
+	if (parent == nullptr || !parent->use) {
+		if (use) usedSize = availableSize;
+		else usedSize = self.size();
+	}
+
+	if (!use || _items.size() == 0) { // Don't use flex
+		if (parent != nullptr && parent->use) {
+			auto _dir = parent->flowDirection() == 1 ? 0 : 1;
+			usedSize[_dir] = availableSize[_dir];
+			hypoSize[_dir] = availableSize[_dir];
+			outerHypoSize[_dir] = addMargin(
+				availableSize[_dir], _dir, parent->usedSize[_dir]);
+		}
+		availableSize = self.size(); // Use its manually set size
+		innerAvailableSize = self.size();	
+		for (auto& _i : _items) {
+			_i->box.parent = this; // No flex parent
+			_i->box.format(*_i);
 		}
 		return;
 	}
-
-	auto _dim = _container.flowDirection();
-
-	// Step 1: calculate available size in container
-	_container.calcAvailableSize();
+	
+	// Get dimensions
+	auto _main = flowDirection();
+	auto _cross = _main == 1 ? 0 : 1;
 
 	// Step 2: calculate the preferred size of all the items
-	for (auto& c : _items) {
-		c->box.parent = &_container; // Also update parent
-		c->box.calcPreferredSize();
+	for (auto& _i : _items) {
+		auto& _item = _i->box;
+		_item.parent = this; // Also update parent
+		
+		_item.usedSize = { Value::Auto, Value::Auto }; // reset
+		
+		// Calculate the flex-base-size of this item
+		auto _flexBasis = _item.flex.basis.decode(_item, innerAvailableSize[_main]);
+		auto _size = _item.size[_main].decode(_item, innerAvailableSize[_main]);
+		if (_flexBasis.definite()) _item.flexBaseSize = _flexBasis.value;
+		else if (_size.definite()) _item.flexBaseSize = _size.value;
+		else _item.flexBaseSize = 0.f; // fallback to 0
+
+		// hypoMainSize is flexBaseSize clamped to min/max values
+		_item.hypoSize[_main] = clamp(_item, innerAvailableSize[_main],
+			_item.flexBaseSize, _item.min[_main], _item.max[_main]);
+
+		// outerHypoMainSize is hypoMainSize + margin
+		_item.outerHypoSize[_main] = _item.hypoSize[_main];
+		if (_item.outerHypoSize[_main].definite()) { // If the hypoSize is definite
+			_item.outerHypoSize[_main] = _item.addMargin(_item.outerHypoSize[_main], _main, innerAvailableSize[_main]);
+		}
+
+		// outerFlexBaseSize is flexBaseSize + margin
+		_item.outerFlexBaseSize = _item.flexBaseSize;
+		if (_item.outerFlexBaseSize.definite()) { // If the hypoSize is definite
+			_item.outerFlexBaseSize = _item.addMargin(_item.outerFlexBaseSize, _main, innerAvailableSize[_main]);
+		}
 	}
 
 	// Step 3: Main Size Determination
 	struct Line {
 		std::span<Pointer<Object>> items{};
-		float usedOuterMainSpace = 0;
+		float usedSpace = 0;
 		float flexGrow = 0;
 		float flexShrink = 0;
 		float crossSize = 0;
@@ -116,75 +184,78 @@ void Box::format(Object& self) {
 	std::vector<Line> _flexLines;
 
 	// Get available size in flow direction
-	auto _availableSize = 0.f;
-	if (_container.availableSize[_dim].definite())
-		_availableSize = _container.availableSize[_dim].value;
+	auto _availableSize = 0.f; // Since available size is either definite or 
+	if (innerAvailableSize[_main].definite()) // infinite, we can do it like this
+		_availableSize = innerAvailableSize[_main].value;
 	else _availableSize = std::numeric_limits<float>::infinity(); // infinity
 
 	// Single line container, everything in a single line
-	if (_container.flex.wrap == Wrap::NoWrap) {
-		float _usedOuterMainSpace = 0;  // used space
+	if (flex.wrap == Wrap::NoWrap) {
+		float _usedSpace = 0;  // used space
 		float _flexGrow = 0;   // sum of flex grow 
 		float _flexShrink = 0; // sum of flex shrink
-		for (auto& _item : _items) {
-			_usedOuterMainSpace += _item->box.outerHypoMainSize.value;
-			_flexGrow += _item->box.flex.grow;
-			_flexShrink += _item->box.flex.shrink;
+		for (auto& _i : _items) {
+			auto& _item = _i->box;
+			_usedSpace += _item.outerHypoSize[_main].value;
+			_flexGrow += _item.flex.grow;
+			_flexShrink += _item.flex.shrink;
 		}
-		_flexLines.push_back({ { _items.begin(), _items.end() }, 
-			_usedOuterMainSpace, _flexGrow, _flexShrink });
-	} else {
+		_flexLines.push_back({ { _items.begin(), _items.end() },
+			_usedSpace, _flexGrow, _flexShrink });
+	}
+	else {
 		// Divide into flex lines
 		auto _start = _items.begin(); // Start iterator for line
-		float _usedOuterMainSpace = 0;  // used space
+		float _usedSpace = 0;  // used space
 		float _flexGrow = 0;   // sum of flex grow 
 		float _flexShrink = 0; // sum of flex shrink
 		for (auto _i = _items.begin(); _i != _items.end(); ++_i) {
-			auto& _item = *_i;
-			float _thisOuterMainSize = _item->box.outerHypoMainSize.value;
-			float _thisGrow = _item->box.flex.grow;
-			float _thisShrink = _item->box.flex.shrink;
+			auto& _item = (*_i)->box;
+			float _thisSize = _item.outerHypoSize[_main].value;
+			float _thisGrow = _item.flex.grow;
+			float _thisShrink = _item.flex.shrink;
 			// Check if going to overflow
-			if (_usedOuterMainSpace + _thisOuterMainSize > _availableSize) { 
+			if (_usedSpace + _thisSize > _availableSize) {
 				// Create line from start to item (item is end of line, so not included!)
-				_flexLines.push_back({ { _start, _i },  
-					_usedOuterMainSpace, _flexGrow, _flexShrink }); 
-				_usedOuterMainSpace = _thisOuterMainSize;
+				_flexLines.push_back({ { _start, _i },
+					_usedSpace, _flexGrow, _flexShrink });
+				_usedSpace = _thisSize;
 				_flexGrow = _thisGrow;
 				_flexShrink = _thisShrink;
 				_start = _i; // Set start of next line
-			} else { // If no overflow, add to used space and grow/shrink
-				_usedOuterMainSpace += _thisOuterMainSize;
+			}
+			else { // If no overflow, add to used space and grow/shrink
+				_usedSpace += _thisSize;
 				_flexGrow += _thisGrow;
 				_flexShrink += _thisShrink;
 			}
 		}
 		// If not all have been added to lines, add rest to final line
 		if (_start != _items.end())
-			_flexLines.push_back({ { _start, _items.end() }, 
-				_usedOuterMainSpace, _flexGrow, _flexShrink });
+			_flexLines.push_back({ { _start, _items.end() },
+				_usedSpace, _flexGrow, _flexShrink });
 	}
 
 	// Resolve flexible lengths (flex grow/shrink)
 	for (auto& _line : _flexLines) {
 		// size is bigger than available: flex-shrink
-		constexpr bool SHRINK = true;
-		constexpr bool GROW = false;
-		bool _type = _line.usedOuterMainSpace > _availableSize;
-		auto _access = _type ? &decltype(flex)::shrink : &decltype(flex)::grow;
+		enum class Type { Shrink, Grow }; using enum Type;
+		Type _type = _line.usedSpace > _availableSize ? Shrink : Grow;
+		auto _flexFactor = _type == Shrink ? &decltype(flex)::shrink : &decltype(flex)::grow;
 
 		// Find used outer flex space
 		float _usedOuterFlexSpace = 0;
 		for (auto& _item : _line.items) {
 			_item->box.freezeSize = false; // reset freeze
+
 			// Freeze items that don't flex, their space usage is target-main-size
-			bool _sizing = _type == SHRINK // depending on flex type, check less or greater
-				? _item->box.flexBaseSize.value < _item->box.hypoMainSize.value
-				: _item->box.flexBaseSize.value > _item->box.hypoMainSize.value;
-			if (_item->box.flex.*_access == 0 || _sizing) {
-				_item->box.targetMainSize = _item->box.hypoMainSize;
-				_usedOuterFlexSpace += _item->box.targetMainSize.value;
-				_item->box.freezeSize = true; // No shrinking, so freeze size
+			bool _sizing = _type == Shrink // depending on flex type, check less or greater
+				? _item->box.flexBaseSize.value < _item->box.hypoSize[_main].value
+				: _item->box.flexBaseSize.value > _item->box.hypoSize[_main].value;
+			if (_item->box.flex.*_flexFactor == 0 || _sizing) {
+				_item->box.targetSize[_main] = _item->box.hypoSize[_main];
+				_item->box.freezeSize = true; // No flexing, so freeze size
+				_usedOuterFlexSpace += _item->box.addMargin(_item->box.targetSize[_main], _main, _availableSize);
 			} else {
 				_usedOuterFlexSpace += _item->box.outerFlexBaseSize.value;
 			}
@@ -199,10 +270,10 @@ void Box::format(Object& self) {
 			for (auto& _item : _line.items) {
 				if (!_item->box.freezeSize) {
 					_itemsLeft = true; // Found a non-frozen item
-					_sumFlexFactor += _item->box.flex.*_access; // Sum flex factor
+					_sumFlexFactor += _item->box.flex.*_flexFactor; // Sum flex factor
 					_usedOuterFlexSpace += _item->box.outerFlexBaseSize.value;
 				} else {
-					_usedOuterFlexSpace += _item->box.targetMainSize.value;
+					_usedOuterFlexSpace += _item->box.addMargin(_item->box.targetSize[_main], _main, _availableSize);
 				}
 			}
 			if (!_itemsLeft) break; // No more left, done
@@ -214,32 +285,23 @@ void Box::format(Object& self) {
 
 			// Distribute free space proportional to the flex factor
 			if (_remainingFreeSpace != 0) {
-				// Find scaled flex shrink factors of all items
-				if (_type == SHRINK) {
-					float _sumScaledFlexFactor = 0;
-					for (auto& _item : _items) {
-						if (_item->box.freezeSize) continue; // ignore frozen
-						_sumScaledFlexFactor += _item->box.flex.shrink * _item->box.flexBaseSize.value;
-					}
+				float _sumFlexFactor = 0;
+				for (auto& _item : _line.items) {
+					if (_item->box.freezeSize) continue; // ignore frozen
+					if (_type == Shrink) _sumFlexFactor += _item->box.flex.shrink * _item->box.flexBaseSize.value;
+					else _sumFlexFactor += _item->box.flex.grow;
+				}
 
-					for (auto& _item : _items) {
-						if (_item->box.freezeSize) continue; // ignore frozen
+				for (auto& _item : _line.items) {
+					if (_item->box.freezeSize) continue; // ignore frozen
+					if (_type == Shrink) {
 						float _scaledFlexFactor = _item->box.flex.shrink * _item->box.flexBaseSize.value;
-						float _ratioFlexFactor = _scaledFlexFactor / _sumScaledFlexFactor;
-						_item->box.targetMainSize = _item->box.flexBaseSize.value -
+						float _ratioFlexFactor = _scaledFlexFactor / _sumFlexFactor;
+						_item->box.targetSize[_main] = _item->box.flexBaseSize.value -
 							(std::abs(_remainingFreeSpace) * _ratioFlexFactor);
-					}
-				} else {
-					float _sumFlexFactor = 0;
-					for (auto& _item : _items) {
-						if (_item->box.freezeSize) continue; // ignore frozen
-						_sumFlexFactor += _item->box.flex.grow;
-					}
-
-					for (auto& _item : _items) {
-						if (_item->box.freezeSize) continue; // ignore frozen
+					} else {
 						float _ratioFlexFactor = _item->box.flex.grow / _sumFlexFactor;
-						_item->box.targetMainSize = _item->box.flexBaseSize.value +
+						_item->box.targetSize[_main] = _item->box.flexBaseSize.value +
 							_remainingFreeSpace * _ratioFlexFactor;
 					}
 				}
@@ -247,35 +309,35 @@ void Box::format(Object& self) {
 
 			// Fix min/max violations
 			float _totalViolation = 0;
-			for (auto& _item : _items) {
+			for (auto& _item : _line.items) {
 				if (_item->box.freezeSize) continue; // ignore frozen
 				// test for min-violation
-				if (_item->box.min[_dim].definite()) {
-					auto _min = _item->box.min[_dim].decode(_item->box, _availableSize);
-					if (_item->box.targetMainSize.value < _min.value) {
-						_totalViolation += _min.value - _item->box.targetMainSize.value;
+				if (_item->box.min[_main].definite()) {
+					auto _min = _item->box.min[_main].decode(_item->box, _availableSize);
+					if (_item->box.targetSize[_main].value < _min.value) {
+						_totalViolation += _min.value - _item->box.targetSize[_main].value;
 						_item->box.violationType = false;
-						_item->box.targetMainSize.value = _min.value;
+						_item->box.targetSize[_main].value = _min.value;
 					}
 				} else { // if not min-constrained, floor at 0 (no negative sizes)
-					if (_item->box.targetMainSize.value < 0) {
-						_totalViolation -= _item->box.targetMainSize.value;
+					if (_item->box.targetSize[_main].value < 0) {
+						_totalViolation -= _item->box.targetSize[_main].value;
 						_item->box.violationType = false;
-						_item->box.targetMainSize.value = 0;
+						_item->box.targetSize[_main].value = 0;
 					}
 				}
 				// test for max-violation
-				if (_item->box.max[_dim].definite()) {
-					auto _max = _item->box.max[_dim].decode(_item->box, _availableSize);
-					if (_item->box.targetMainSize.value > _max.value) {
-						_totalViolation += _max.value - _item->box.targetMainSize.value;
+				if (_item->box.max[_main].definite()) {
+					auto _max = _item->box.max[_main].decode(_item->box, _availableSize);
+					if (_item->box.targetSize[_main].value > _max.value) {
+						_totalViolation += _max.value - _item->box.targetSize[_main].value;
 						_item->box.violationType = true;
-						_item->box.targetMainSize.value = _max.value;
+						_item->box.targetSize[_main].value = _max.value;
 					}
 				}
 			}
 
-			for (auto& _item : _items) {
+			for (auto& _item : _line.items) {
 				if (_item->box.freezeSize) continue; // ignore frozen
 				// Freeze items according to violations
 				if (_totalViolation == 0 // No violations
@@ -284,86 +346,248 @@ void Box::format(Object& self) {
 					_item->box.freezeSize = true;
 			}
 		}
-
-		for (auto& _item : _items) { // Finally set all usedMainSizes
-			_item->box.usedMainSize = _item->box.targetMainSize.value;
-		}
 	}
 
 	// Step 4: Cross Size Determination
 	// In order for us to be able to calculate the cross size
 	// we need to know the layouts of the items
 	for (auto& _item : _items) {
+		// Set usedSize in main axis to target size, in recurse, this
+		// usedSize will be used for available space
+		_item->box.usedSize[_main] = _item->box.targetSize[_main].value;
 		_item->box.format(*_item); // TODO: cross size strategies (sometimes not necessary to recurse all the way)
+		// After format recurse, the item has chosen a usedSize, set that as
+		// hypothetical cross size, as we'll adjust that if align-self: stretch
+		_item->box.hypoSize[_cross] = _item->box.usedSize[_cross];
+		_item->box.outerHypoSize[_cross] = _item->box.addMargin(
+			_item->box.usedSize[_cross], _cross, innerAvailableSize[_cross]);
 	}
 
+	auto _crossSize = size[_cross].decode(*this, parent ? parent->innerAvailableSize[_cross] : Value{ windowSize[_cross] });
+	auto _innerCrossSize = _crossSize; 
+	if (_crossSize.definite()) {
+		// Remove padding from the definite crossSize of the container
+		_innerCrossSize = subPadding(_innerCrossSize, 
+			_cross, parent ? parent->innerAvailableSize[_cross] : Value{ windowSize[_cross] });
+	}
+	if (_flexLines.size() == 1 && _innerCrossSize.definite()) {
+		_flexLines[0].crossSize = _crossSize.value; 
+	} else {
+		for (auto& _line : _flexLines) {
+			float _largest = 0;
+			for (auto& _item : _line.items) {
+				if (_item->box.outerHypoSize[_cross].value > _largest)
+					_largest = _item->box.outerHypoSize[_cross].value;
+			}
+			_line.crossSize = _largest;
+		}
+	}
+
+	if (_flexLines.size() == 1) { // If only 1 line, clamp it to the min/max
+		auto _min = min[_cross].decode(*this, parent ? parent->innerAvailableSize[_cross] : Value{ windowSize[_cross] });
+		auto _max = max[_cross].decode(*this, parent ? parent->innerAvailableSize[_cross] : Value{ windowSize[_cross] });
+		if (_min.definite()) _flexLines[0].crossSize = std::max(_flexLines[0].crossSize, _min.value);
+		if (_max.definite()) _flexLines[0].crossSize = std::min(_flexLines[0].crossSize, _max.value);
+	}
+
+	// Handle align-content: stretch
+	if (align.content == Align::Stretch && _innerCrossSize.definite()) {
+		float _sumCrossSize = 0; // Find sum of cross sizes
+		for (auto& _line : _flexLines) _sumCrossSize += _line.crossSize;
+		if (_sumCrossSize < _innerCrossSize.value) { // If space leftover, add equal portion to all lines
+			float _addToCrossSize = (_innerCrossSize.value - _sumCrossSize) / _flexLines.size();
+			for (auto& _line : _flexLines) _line.crossSize += _addToCrossSize;
+		}
+	}
+
+	float _usedCrossSpace = 0;
+	for (auto& _line : _flexLines) {
+		_usedCrossSpace += _line.crossSize;
+		for (auto& _item : _line.items) {
+			auto _selfAlign = _item->box.align.self; // Find self align
+			if (_item->box.align.self.is(Value::Auto)) // if auto, use container's item align
+				_selfAlign = align.items;
+			if (!_selfAlign.definite()) _selfAlign = Align::Stretch; // fallback
+
+			if (_selfAlign == Align::Stretch && // If stretch, set to line size - margin
+				_item->box.size[_cross].is(Value::Auto)) { 
+				_item->box.usedSize[_cross] = _line.crossSize
+					- _item->box.margin[_cross].value
+					- _item->box.margin[_cross + 2].value;
+				_item->box.format(*_item); // Format again with new size
+			} else { // No stretch, just use hypo size
+				_item->box.usedSize[_cross] = _item->box.hypoSize[_cross].value;
+			}
+		}
+	}
+
+	// Determine container's used cross size
+	auto _calcCrossSize = size[_cross].decode(*this, parent ? parent->innerAvailableSize[_cross] : Value{ windowSize[_cross] });
+	if (_calcCrossSize.definite()) usedSize[_cross] = _calcCrossSize.value;
+	else usedSize[_cross] = _usedCrossSpace;
+	// Clamp to min/max
+	usedSize[_cross] = clamp(*this, parent ? parent->innerAvailableSize[_cross] : Value{ windowSize[_cross] },
+		usedSize[_cross], min[_cross], max[_cross]);
 	
+	float _freeCrossSpace = usedSize[_cross] - _usedCrossSpace;
+	if (_freeCrossSpace < 0) _freeCrossSpace = 0;
 
+	// Determine content box using padding and usedSize/position
+	Vec4<float> _padding{
+		padding[0].decode(*this, parent ? parent->innerAvailableSize[0] : Value{ windowSize[0] }),
+		padding[1].decode(*this, parent ? parent->innerAvailableSize[1] : Value{ windowSize[1] }),
+		padding[2].decode(*this, parent ? parent->innerAvailableSize[0] : Value{ windowSize[0] }),
+		padding[3].decode(*this, parent ? parent->innerAvailableSize[1] : Value{ windowSize[1] }),
+	};
+	
+	Dimensions<float> _contentBox;
+	_contentBox[_cross] = self[_cross] + _padding[_cross];
+	_contentBox[_main] = self[_main] + _padding[_main];
+	_contentBox[_cross + 2] = usedSize[_cross] + _padding[_cross + 2];
+	_contentBox[_main + 2] = usedSize[_main] + _padding[_main + 2];
 
+	// handle align-content
+	Align _content = Align::Start;
+	if (align.content.is(Value::Enum))
+		_content = static_cast<Align>(align.content.value);
 
-	/*
+	float _crossStart = 0, _crossDistance = 0, _crossDir = 1;
+	switch (_content) {
+	case Align::Start:
+		_crossStart = _contentBox[_cross];
+		_crossDistance = 0;
+		_crossDir = 1;
+		break;
+	case Align::End:
+		_crossStart = _contentBox[_cross] + _contentBox[_cross + 2];
+		_crossDistance = 0;
+		_crossDir = -1;
+		break;
+	case Align::Center:
+		_crossStart = _contentBox.center()[_cross] - _usedCrossSpace / 2.f;
+		_crossDistance = 0;
+		_crossDir = 1;
+		break;
+	case Align::Between:
+		_crossStart = _contentBox[_cross];
+		if (_flexLines.size() == 1) _crossDistance = 0;
+		else _crossDistance = std::max(0.f, _freeCrossSpace / (_flexLines.size() - 1));
+		_crossDir = 1;
+		break;
+	case Align::Around:
+		_crossStart = _contentBox[_cross] + (_freeCrossSpace / _flexLines.size()) / 2.;
+		_crossDistance = _freeCrossSpace / _flexLines.size();
+		_crossDir = 1;
+		break;
+	case Align::Evenly:
+		_crossStart = _contentBox[_cross] + _freeCrossSpace / (_flexLines.size() + 1);
+		_crossDistance = _freeCrossSpace / (_flexLines.size() + 1);
+		_crossDir = 1;
+		break;
+	}
+
+	Direction _direction = Direction::Row;
+	if (flex.direction.is(Value::Enum))
+		_direction = static_cast<Direction>(flex.direction.value);
+
+	for (auto& _line : _flexLines) {
+		if (_crossDir == -1) _crossStart -= _line.crossSize;
+
+		Justify _justify = Justify::Start;
+		if (justify.is(Value::Enum))
+			_justify = static_cast<Justify>(justify.value);
+
+		Direction _direction = Direction::Row;
+		if (flex.direction.is(Value::Enum))
+			_direction = static_cast<Direction>(flex.direction.value);
+
+		float _usedSpace = 0;
+		for (auto& _item : _line.items)
+			_usedSpace += _item->box.addMargin(_item->box.usedSize[_main],
+				_main, innerAvailableSize[_main]);
 		
-		preferred size: {
-			if (flex-basis is auto) {
-				if (size is not auto) {
-					if (min-width is not none) return max(width, min-width);
-					else return width;
-				} else return max-content;
- 			} else {
-				return flex-basis;
-			}
+		float _freeSpace = _availableSize - _usedSpace;
+		if (_freeSpace < 0) _freeSpace = 0;
+
+		float _start = 0, _distance = 0, _dir = 1;
+		switch (_justify) {
+		case Justify::Start: 
+			_start = _contentBox[_main];
+			_distance = 0;
+			_dir = 1;
+			break;
+		case Justify::End: 
+			_start = _contentBox[_main] + _contentBox[_main + 2];
+			_distance = 0;
+			_dir = -1; 
+			break;
+		case Justify::Center: 
+			_start = _contentBox.center()[_main] - _usedSpace / 2.f; 
+			_distance = 0;  
+			_dir = 1; 
+			break;
+		case Justify::Between:
+			_start = _contentBox[_main];
+			if (_line.items.size() == 1) _distance = 0;
+			else _distance = std::max(0.f, _freeSpace / (_line.items.size() - 1));
+			_dir = 1;
+			break;
+		case Justify::Around:
+			_start = _contentBox[_main] + (_freeSpace / _line.items.size()) / 2.;
+			_distance = _freeSpace / _line.items.size();
+			_dir = 1;
+			break;
+		case Justify::Evenly:
+			_start = _contentBox[_main] + _freeSpace / (_line.items.size() + 1);
+			_distance = _freeSpace / (_line.items.size() + 1);
+			_dir = 1;
+			break;
 		}
 
-		determine all children's prefered size // Min width needs to be taken into account here!
-	
-		if enough space in flex direction {
-			set all children's prefered size.
-			
-			check size remaining in flex direction.
+		if (_direction == Direction::RowReverse || _direction == Direction::ColumnReverse)
+			_dir *= -1, _start = _contentBox.center()[_main] + (_contentBox.center()[_main] - _start);
 
-			determine sum of children's flex-grow
-			if (sum is not 0) {
-				determine size of children with a max-size
-				for each child that reaches its max size, redivide leftover space
-				taking into account the flex-grow proportions
+		for (auto& _item : _line.items) {
+			Align _selfAlign = Align::Stretch;
+			if (_item->box.align.self.is(Value::Enum))
+				_selfAlign = static_cast<Align>(_item->box.align.self.value); // Find self align
+			else if (_item->box.align.self.is(Value::Auto)) // if auto, use container's item align
+				_selfAlign = static_cast<Align>(align.items.value);
+
+			Vec4<float> _margin{
+				_item->box.margin[0].decode(_item->box, innerAvailableSize[0]),
+				_item->box.margin[1].decode(_item->box, innerAvailableSize[1]),
+				_item->box.margin[2].decode(_item->box, innerAvailableSize[0]),
+				_item->box.margin[3].decode(_item->box, innerAvailableSize[1]),
+			};
+
+			float _crossOffset = 0;
+			switch (_selfAlign) {
+			case Align::Start:
+				_crossOffset = 0;
+				break;		
+			case Align::End:
+				_crossOffset = _line.crossSize - _item->box.usedSize[_cross];
+				break;
+			case Align::Center:
+				_crossOffset = _line.crossSize / 2. - _item->box.usedSize[_cross] / 2. - _margin[_cross];
+				break;
+			case Align::Stretch:
+				_crossOffset = 0;
+				break;
 			}
 
-			check justify-content to align items in inline direction when leftover space
-
-			use align-content and align-items to align in block direction
-
-		} else {
-			if (nowrap) {
-				give all children their prefered size
-
-				check overflow in flex direction.
-
-				determine sum of children's flex-shrink
-				if (sum is not 0) {
-					determine size of children with a min-size
-					for each child that reaches its min size, redistribute space we take
-					taking into account the flex-shrink proportions
-				} 
-
-				check justify-content to align items in inline direction (perhaps with overflow)
-
-				use align-content and align-items to align in block direction
-			} else if (wrap) {
-				give all children their prefered size
-
-				start new blocks whenever necessary
-
-				now take every row individually and apply flex-grow/flex-shrink where necessary
-				taking into account justify-content when positioning/aligning
-
-				use align-content and align-items to align in block direction
-			} else if (wrap-reverse) {
-				same as wrap, except the blocks are in reverse order
-			}
+			if (_dir == -1) _start -= (_item->box.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
+			(*_item)[_cross] = _crossStart + _margin[_cross] + _crossOffset;
+			(*_item)[_main] = _start + _margin[_main];
+			(*_item)[_cross + 2] = _item->box.usedSize[_cross];
+			(*_item)[_main + 2] = _item->box.usedSize[_main];
+			if (_dir == 1) _start += (_item->box.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
+			_start += _dir * _distance;
 		}
-	
-	*/
 
-
+		if (_crossDir == 1) _crossStart += _line.crossSize;
+		_crossStart += _crossDir * _crossDistance;
+	}
 }
 

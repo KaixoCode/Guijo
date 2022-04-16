@@ -14,7 +14,7 @@ public:
     void draw(DrawContext& context) const override {
         if (get(Pressed)) context.fill(color.brighter(0.6));
         else if (get(Hovering)) context.fill(color.brighter(0.8));
-        else if (get(Focused)) context.fill(color.brighter(1.2));
+        else if (get(Focused)) context.fill(color.brighter(1.5));
         else context.fill(color);
 
         context.rect(dimensions());
@@ -22,23 +22,35 @@ public:
 };
 
 constexpr Flex::Box class1{
-    .size{ 50.f, 10.f },
+    .size{ 50.f, 50.f },
+    .margin{ 10.f, 10.f, 10.f, 10.f },
     .flex {
         .grow = 1,
-    }
+        .shrink = 0,
+    },
+    .align {
+        .self = Flex::Align::Center
+    },
 };
 
 constexpr Flex::Box class2{
-    .size{ 50.f, 10.f },
+    .size{ 100.f, 50.f },
+    .min{ 50.f, Flex::Value::None },
+    .margin{ 10.f, 10.f, 10.f, 10.f },
     .flex {
         .grow = 1,
-    }
+        .shrink = 1,
+    },
+    .align {
+        .self = Flex::Align::Start
+    },
 };
 
 constexpr Flex::Box class3{
-    .size{ 50.f, 10.f },
+    .size{ 100.f, 50.f },
     .flex {
         .grow = 1,
+        .shrink = 0,
     }
 };
 
@@ -52,23 +64,27 @@ int main() {
         .dimensions{ -1, -1, 500, 500 },
     });
 
-    window.box.use = false;
+    window.dimensions({ 0, 0, 500, 500 });
+    window.box.flex.wrap = Flex::Wrap::DoWrap;
+    window.box.flex.direction = Flex::Direction::Row;
+    window.box.justify = Flex::Justify::Between;
+    window.box.align.content = Flex::Align::Stretch;
 
-    Object& container = window.emplace<Object>();
+    Pointer<Object> obj[]{
+        window.emplace<MyObject>(Color{ 128,   0, 128 }),
+        window.emplace<MyObject>(Color{ 128, 255,   0 }),
+        window.emplace<MyObject>(Color{ 128, 255, 128 }),
+        window.emplace<MyObject>(Color{ 255,   0,   0 }),
+        window.emplace<MyObject>(Color{   0, 255, 128 }),
+        window.emplace<MyObject>(Color{   0, 128, 255 }),
+    };
 
-    container.dimensions({ 0, 0, 500, 500 });
-
-    auto& c1 = container.emplace<MyObject>(Color{ 128, 0, 128 });
-    auto& c2 = container.emplace<MyObject>(Color{ 128, 255, 0 });
-    auto& c3 = container.emplace<MyObject>(Color{ 255, 0, 128 });
-
-    Size<float> size = { 10, 20 };
-
-    c1.box.size = size;
-
-    c1.box = class1;
-    c2.box = class2;
-    c3.box = class3;
+    obj[0]->box = class2;
+    obj[1]->box = class2;
+    obj[2]->box = class1;
+    obj[3]->box = class2;
+    obj[4]->box = class1;
+    obj[5]->box = class1;
 
     while (gui.loop());
 

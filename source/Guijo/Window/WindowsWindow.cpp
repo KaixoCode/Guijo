@@ -120,6 +120,8 @@ bool Window::loop() {
 }
 
 void Window::windowsLoop() {
+	box.size = size();
+	box.windowSize = size();
 	box.format(*this);
 
 	update(); // Update cycle
@@ -173,6 +175,7 @@ void Window::keyEvent(KeyCode key, bool repeat, int action, KeyMod mod) {
 void Window::resizeEvent(Dimensions dims) {
 	Object::dimensions(dims);
 	m_Graphics.dimensions(dims);
+	windowsLoop();
 }
 
 LRESULT Window::windowProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam) {

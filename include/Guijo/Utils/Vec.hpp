@@ -102,7 +102,7 @@ namespace Guijo {
 
         constexpr Point() : Parent{ {} } {};
         constexpr Point(auto x, auto y) : Parent{ static_cast<Ty>(x), static_cast<Ty>(y) } {}
-        constexpr Point(const Vec2<Ty>& p) : Parent{ p } {}
+        constexpr Point(const Vec2<Ty>& p) : Parent{ p[0], p[1] } {}
 
         constexpr Ty x() const { return this->get<0>(); }
         constexpr Ty y() const { return this->get<1>(); }
@@ -134,7 +134,7 @@ namespace Guijo {
 
         constexpr Size() : Parent{ {} } {};
         constexpr Size(auto x, auto y) : Parent{ static_cast<Ty>(x), static_cast<Ty>(y) } {}
-        constexpr Size(const Vec2<Ty>& p) : Parent{ p } {}
+        constexpr Size(const Vec2<Ty>& p) : Parent{ p[0], p[1] } {}
 
         constexpr Ty width() const { return this->get<0>(); }
         constexpr Ty height() const { return this->get<1>(); }
@@ -154,7 +154,7 @@ namespace Guijo {
 
         constexpr Dimensions() : Parent{ {} } {};
         constexpr Dimensions(const Vec2<Ty>& p, const Vec2<Ty>& s) : Parent{ p[0], p[1], s[0], s[1] } {}
-        constexpr Dimensions(const Vec4<Ty>& d) : Parent(d) {}
+        constexpr Dimensions(const Vec4<Ty>& d) : Parent{ d[0], d[1], d[2], d[3] } {}
         constexpr Dimensions(auto v) : Parent{ static_cast<Ty>(v), static_cast<Ty>(v), static_cast<Ty>(v), static_cast<Ty>(v) } {}
         constexpr Dimensions(auto x, auto y, auto w, auto h) : Parent{ static_cast<Ty>(x), static_cast<Ty>(y), static_cast<Ty>(w), static_cast<Ty>(h) } {}
         constexpr Dimensions(auto x, auto y, const Vec2<Ty>& p) : Parent{ static_cast<Ty>(x), static_cast<Ty>(y), p[0], p[1] } {}
