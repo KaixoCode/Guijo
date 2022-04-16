@@ -81,7 +81,7 @@ namespace Guijo {
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr Value& operator=(Ty val) { value = static_cast<float>(val), type = Enum; return *this; }
 
-            constexpr operator float() { return value; }
+            constexpr operator float() const { return value; }
 
             Type type;
             float value;

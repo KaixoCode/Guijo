@@ -22,19 +22,19 @@ public:
 };
 
 constexpr Flex::Box class1{
-    .size{ 50.f, 50.f },
+    .size{ Flex::Value::Auto, 50.f },
     .margin{ 10.f, 10.f, 10.f, 10.f },
     .flex {
         .grow = 1,
         .shrink = 0,
     },
     .align {
-        .self = Flex::Align::Center
+        .self = Flex::Align::Stretch
     },
 };
 
 constexpr Flex::Box class2{
-    .size{ 100.f, 50.f },
+    .size{ 100.f, 50.f},
     .min{ 50.f, Flex::Value::None },
     .margin{ 10.f, 10.f, 10.f, 10.f },
     .flex {
@@ -61,14 +61,14 @@ int main() {
 
     Window& window = gui.emplace<Window>({
         .name = "HelloWorld1",
-        .dimensions{ -1, -1, 500, 500 },
+        .dimensions{ -1, -1, 200, 500 },
     });
 
-    window.dimensions({ 0, 0, 500, 500 });
     window.box.flex.wrap = Flex::Wrap::DoWrap;
     window.box.flex.direction = Flex::Direction::Row;
     window.box.justify = Flex::Justify::Between;
-    window.box.align.content = Flex::Align::Stretch;
+    window.box.align.content = Flex::Align::Center;
+    window.box.align.items = Flex::Align::Start;
 
     Pointer<Object> obj[]{
         window.emplace<MyObject>(Color{ 128,   0, 128 }),
