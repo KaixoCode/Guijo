@@ -11,11 +11,11 @@ namespace Guijo {
     };
 
     struct StateLink {
-        enum class Find {
-            None, Match, SameId
-        };
+        enum class Find { None, Match, SameId };
+
         StateId id;
         Vec2<State> range{ 1, 1 };
+
         constexpr Find match(const StateFind& v) const {
             const bool _testId = id == v.id;
             const bool _testRange = range[0] <= v.value && range[1] >= v.value;
