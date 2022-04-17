@@ -20,12 +20,6 @@ CalcValue CalcValue::decode(Box& obj, CalcValue pval) {
     }
 }
 
-Value& Value::assign(float newval, Type newtype) {
-    if (newtype != type) value(newval), type = newtype;
-    else value(newval);
-    return *this;
-}
-
 void Value::classAssign(const Value& v) {
     if (v.type != Unset) {
         type = v.type;
@@ -39,14 +33,6 @@ void Value::classAssign(const Value& v) {
     if (v.m_Time != 0) m_Time = v.m_Time;
 }
 
-Margin& Margin::operator=(const Vec4<float>& v) {
-    left = v[0];
-    top = v[1];
-    right = v[0];
-    bottom = v[1];
-    return *this;
-}
-
 CalcValue Margin::get(std::size_t i) {
     switch (i) {
     case 0: return { left.getType(), left.get() };
@@ -56,12 +42,6 @@ CalcValue Margin::get(std::size_t i) {
     }
 }
 
-Flex::Size& Flex::Size::operator=(const Vec2<float>& v) {
-    width = v[0];
-    height = v[1];
-    return *this;
-}
-
 CalcValue Flex::Size::get(std::size_t i) {
     switch (i) {
     case 0: return { width.getType(), width.get() };
@@ -69,16 +49,10 @@ CalcValue Flex::Size::get(std::size_t i) {
     }
 }
 
-Flex::Point& Flex::Point::operator=(const Vec2<float>& v) {
-    x = v[0];
-    y = v[1];
-    return *this;
-}
-
-Value& Flex::Point::operator[](std::size_t i) {
+CalcValue Flex::Point::get(std::size_t i) {
     switch (i) {
-    case 0: return x;
-    default: return y;
+    case 0: return { x.getType(), x.get() };
+    default: return { y.getType(), y.get() };
     }
 }
 
@@ -504,6 +478,9 @@ void Box::format(Object& self) {
     if (_crossSize.definite()) {
         // Remove padding from the definite crossSize of the container
         _innerCrossSize = subPadding(_innerCrossSize, _cross, _parentSize[_cross]);
+    } else if (usedSize[_cross].definite()) {
+        _crossSize = usedSize[_cross];
+        _innerCrossSize = subPadding(_crossSize, _cross, _parentSize[_cross]);
     }
 
     // Determine the cross sizes of all the lines
@@ -543,20 +520,21 @@ void Box::format(Object& self) {
     float _usedCrossSpace = 0; // While keeping track of it
     for (auto& _line : _flexLines) {
         _usedCrossSpace += _line.crossSize;
-        for (auto& _item : _line.items) {
-            Value _selfAlign = _item->box.align.self; // Find self align
-            if (_item->box.align.self.is(Value::Auto)) // if auto, use container's item align
+        for (auto& _i : _line.items) {
+            auto& _item = _i->box;
+            Value _selfAlign = _item.align.self; // Find self align
+            if (_item.align.self.is(Value::Auto)) // if auto, use container's item align
                 _selfAlign = align.items;
             if (!_selfAlign.definite()) _selfAlign = Align::Stretch; // fallback
             // If stretch, set used-cross-size to line's cross-size minus margin
             if (_selfAlign == Align::Stretch && 
-                _item->box.size.get(_cross).is(Value::Auto)) {
-                _item->box.usedSize[_cross] = _line.crossSize
-                    - _item->box.margin.get(_cross)
-                    - _item->box.margin.get(_cross + 2);
-                _item->box.format(*_item); // Format again with new size
+                _item.size.get(_cross).is(Value::Auto)) {
+                _item.usedSize[_cross] = _line.crossSize
+                    - _item.margin.get(_cross)
+                    - _item.margin.get(_cross + 2);
+                _item.format(*_i); // Format again with new size
             } else { // No stretch, just use hypothetical-cross-size
-                _item->box.usedSize[_cross] = _item->box.hypoSize[_cross];
+                _item.usedSize[_cross] = _item.hypoSize[_cross];
             }
         }
     }
@@ -564,7 +542,7 @@ void Box::format(Object& self) {
     // Determine container's used cross size
     auto _calcCrossSize = size.get(_cross).decode(*this, _parentSize[_cross]);
     if (_calcCrossSize.definite()) usedSize[_cross] = _calcCrossSize;
-    else usedSize[_cross] = _usedCrossSpace;
+    else if (!usedSize[_cross].definite()) usedSize[_cross] = _usedCrossSpace;
     // Clamp to min/max
     usedSize[_cross] = clamp(*this, _parentSize[_cross], 
         usedSize[_cross], min.get(_cross), max.get(_cross));

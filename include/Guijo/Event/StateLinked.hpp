@@ -9,6 +9,7 @@ namespace Guijo {
         StateId id;
         State value{ 1 };
     };
+
     struct StateLink {
         enum class Find {
             None, Match, SameId
@@ -41,7 +42,7 @@ namespace Guijo {
         constexpr Ty& operator[](StateId id) { return emplace_or_find({ id }); }
         constexpr Ty& operator[](StateLink link) { return emplace_or_find(link); }
 
-        virtual StateLinked& operator=(const Ty& val) { m_Default = val; return *this; }
+        constexpr virtual StateLinked& operator=(const Ty& val) { m_Default = val; return *this; }
         virtual void value(const Ty& val) { m_Default = val; };
 
         void update(StateId id, State value) override {
@@ -92,19 +93,19 @@ namespace Guijo {
             }
         };
 
-        const Ty& get() const { 
+        constexpr const Ty& get() const {
             return m_Current == npos 
                 ? m_Default 
                 : m_Values[m_Current].second;
         }
 
-        Ty& get() { 
+        constexpr Ty& get() {
             return m_Current == npos 
                 ? m_Default
                 : m_Values[m_Current].second;
         }
 
-        Ty& emplace_or_find(const StateLink& v) {
+        constexpr Ty& emplace_or_find(const StateLink& v) {
             for (auto& [a, b] : m_Values) if (a == v) return b;
             return m_Values.emplace_back(std::pair<StateLink, Ty>{ v, {} }).second;
         }
@@ -144,7 +145,7 @@ namespace Guijo {
             return *this;
         }
 
-        constexpr void value(const Ty& val) override {
+        void value(const Ty& val) override {
             m_Default = val;
             if (m_Current == npos)
                 assign(m_Default);

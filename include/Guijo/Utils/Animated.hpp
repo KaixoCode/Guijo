@@ -111,7 +111,7 @@ namespace Guijo {
 			const double _percent = std::clamp(
 				std::chrono::duration_cast<std::chrono::milliseconds>(
 					std::chrono::steady_clock::now() - m_ChangeTime)
-					.count() / m_Time, 0., 1.);
+				.count() / m_Time, 0., 1.);
 			return m_Value + (m_Goal - m_Value) * m_Curve(_percent);
 		}
 

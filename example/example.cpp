@@ -7,31 +7,37 @@ TODO:
  - custom logger
 */
 
+auto MyState = Object::newState();
 
-class MyObject : public Object, public StateListener {
+class MyObject : public Object {
 public:
-    Color color;
+    StateLinked<Animated<Color>> color;
+    StateLinked<Animated<float>> brightness{ { 1.f, 500., Curves::easeOut<2>, } };
+    StateLinked<Animated<float>> border{ { 0.f, 500., Curves::easeOut<2>, } };
 
-    StateLinked<Animated<float>> border{ 
-        { 0.f, 500., Curves::easeOut<2>, }
-    };
+    MyObject(Color c) : color{ { c, 500., Curves::easeOut<2> } } {
+        link(border);
+        link(color);
+        link(brightness);
 
-    void update(StateId id, State value) {
-        std::cout << id << ": " << value << '\n';
-    }
+        event<[](MyObject& me, const MouseMove& e) {
+            me.set(MyState, e.pos.x() - me.x());
+        }>();
 
-    MyObject(Color color) : color(color) {
+        color[Focused] = c.brighter(1.6);
+        color[Hovering] = c.brighter(1.3);
 
-        link(*this);
-        link(border); // register StateLinked value
-
+        border[{ MyState, { 100, 200 } }] = 5.f;
         border[Hovering] = 20.f;
         border[Focused] = 10.f;
+
+        brightness[Hovering] = 0.5f;
+        brightness[Focused] = 0.5f;
     }
 
     void draw(DrawContext& context) const override {
         context.fill(color);
-        context.stroke(color.brighter(1.5));
+        context.stroke(color.get().brighter(brightness));
         context.strokeWeight(border);
         context.rect(dimensions());
         Object::draw(context);
@@ -81,13 +87,31 @@ int main() {
     window.box.align.items = Flex::Align::Stretch;
     window.box.padding = { 5.f, 5.f, 5.f, 5.f };
 
-    Pointer<Object> obj[]{
-        window.emplace<MyObject>(Color{ 40.f }),
-        window.emplace<MyObject>(Color{ 30.f }),
-        window.emplace<MyObject>(Color{ 70.f }),
-        window.emplace<MyObject>(Color{ 50.f }),
-        window.emplace<MyObject>(Color{ 20.f }),
-        window.emplace<MyObject>(Color{ 60.f }),
+    Object* obj[]{
+        &window.emplace<MyObject>(Color{ 40.f }),
+        &window.emplace<MyObject>(Color{ 30.f }),
+        &window.emplace<MyObject>(Color{ 70.f }),
+        &window.emplace<MyObject>(Color{ 50.f }),
+        &window.emplace<MyObject>(Color{ 20.f }),
+        &window.emplace<MyObject>(Color{ 60.f }),
+        &window.emplace<MyObject>(Color{ 90.f }),
+        &window.emplace<MyObject>(Color{ 30.f }),
+        &window.emplace<MyObject>(Color{ 60.f }),
+        &window.emplace<MyObject>(Color{ 40.f }),
+        &window.emplace<MyObject>(Color{ 20.f }),
+        &window.emplace<MyObject>(Color{ 90.f }),
+        &window.emplace<MyObject>(Color{ 40.f }),
+        &window.emplace<MyObject>(Color{ 60.f }),
+        &window.emplace<MyObject>(Color{ 20.f }),
+        &window.emplace<MyObject>(Color{ 60.f }),
+        &window.emplace<MyObject>(Color{ 80.f }),
+        &window.emplace<MyObject>(Color{ 70.f }),
+        &window.emplace<MyObject>(Color{ 50.f }),
+        &window.emplace<MyObject>(Color{ 30.f }),
+        &window.emplace<MyObject>(Color{ 40.f }),
+        &window.emplace<MyObject>(Color{ 90.f }),
+        &window.emplace<MyObject>(Color{ 80.f }),
+        &window.emplace<MyObject>(Color{ 70.f }),
     };
 
     for (auto& o : obj) {
@@ -107,6 +131,12 @@ int main() {
             .self = Flex::Align::Stretch,
         };
         _item = class1;
+
+        for (int i = 0; i < 10; i++) {
+            auto& ob = o->emplace<MyObject>(Color{ 120.f });
+            ob.box = class1;
+            ob.box.size.width = 20;
+        }
     }
 
     while (gui.loop());

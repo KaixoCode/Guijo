@@ -6,7 +6,7 @@ using namespace Guijo;
 Object::Object() {
     set(Visible); // Always start visible
     // Handle Hovering state
-    state<[](const MouseMove& e, Object& c, std::size_t matches) {
+    state<[](const MouseMove& e, Object& c, State matches) {
         bool _now = c.hitbox(e.pos) && matches == 0; // New state
         bool _prev = c.get(Hovering); // Previous state
         // If state change, send enter/exit event
@@ -15,7 +15,7 @@ Object::Object() {
         return _now;
     }>(Hovering);
     // Handle focused state
-    state<[](const MousePress&, Object& c, std::size_t matches) {
+    state<[](const MousePress&, Object& c, State matches) {
         bool _now = c.get(Hovering) && matches == 0; // New state
         bool _prev = c.get(Focused); // Previous state
         // If state change, send focus/unfocus event
@@ -71,7 +71,7 @@ void Object::handle(const Event& e) {
     for (auto& _c : objects()) // Forward event to sub-objects
         if (_c->get(Visible)) if (e.forward(*_c)) _c->handle(e);
     for (auto& _h : m_StateHandlers) // Handle state
-        for (std::size_t _matches = 0; auto& _c : std::views::reverse(objects()))
+        for (State _matches = 0; auto& _c : std::views::reverse(objects()))
             if (_c->get(Visible)) _matches += _h->handle(*this, e, *_c, _matches);
     for (auto& _h : m_EventHandlers) _h->handle(*this, e);
 }

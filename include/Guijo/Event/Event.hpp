@@ -54,20 +54,20 @@ namespace Guijo {
     };
 
     struct StateHandler : public Refcounted {
-        virtual bool handle(Object&, const Event&, Object&, std::size_t) const = 0;
+        virtual State handle(Object&, const Event&, Object&, State) const = 0;
     };
 
     template<auto Fun> struct TypedStateHandler : public StateHandler {
         const std::size_t state{};
         TypedStateHandler(std::size_t state) : state(state) {}
-        bool handle(Object& self,
-            const Event& e, Object& c, std::size_t matches) const override {
+        State handle(Object& self,
+            const Event& e, Object& c, State matches) const override {
             using signature = detail::signature_t<decltype(Fun)>;
             using args = detail::function_args_t<signature>;
             // Invocable immediately (static function/lambda)
             if constexpr (detail::invocable_tuple_t<decltype(Fun), args>) {
                 // Has matched argument at end
-                if constexpr (std::same_as<std::size_t, detail::last_t<args>>) {
+                if constexpr (std::same_as<State, detail::last_t<args>>) {
                     if constexpr (std::tuple_size_v<args> == 3) { // No self argument
                         using event_type = std::decay_t<std::tuple_element_t<0, args>>;
                         using component_type = std::decay_t<std::tuple_element_t<1, args>>;
@@ -86,7 +86,7 @@ namespace Guijo {
                     }
                 }
                 else {
-                    if constexpr (std::tuple_size_v<args> == 2) { // No self argument
+                    if constexpr (std::tuple_size_v<args> == 2) { // No matches argument
                         using event_type = std::decay_t<std::tuple_element_t<0, args>>;
                         using component_type = std::decay_t<std::tuple_element_t<1, args>>;
                         if (auto _e = dynamic_cast<const event_type*>(&e))
@@ -113,7 +113,7 @@ namespace Guijo {
                         if (auto _c = dynamic_cast<component_type*>(&c))
                             return _c->set(state, (_self->*Fun)(*_e, *_c, matches));
             }
-            return false;
+            return 0;
         };
     };
 }

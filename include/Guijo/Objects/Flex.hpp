@@ -78,14 +78,14 @@ namespace Guijo {
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr Value(Ty val) : enumValue(static_cast<float>(val)), type(Enum) {}
 
-            Value& operator=(const Value& v) = default;
-            Value& operator=(Value&& v) noexcept = default;
-            Value& operator=(px v) { return assign(v.value, Pixels); }
-            Value& operator=(pc v) { return assign(v.value, Percent); }
-            Value& operator=(vh v) { return assign(v.value, ViewHeight); }
-            Value& operator=(vw v) { return assign(v.value, ViewWidth); }
-            Value& operator=(Type v) { return assign(0, v); }
-            Value& operator=(float v) { return assign(v, Pixels); }
+            constexpr Value& operator=(const Value& v) = default;
+            constexpr Value& operator=(Value&& v) noexcept = default;
+            constexpr Value& operator=(px v) { return assign(v.value, Pixels); }
+            constexpr Value& operator=(pc v) { return assign(v.value, Percent); }
+            constexpr Value& operator=(vh v) { return assign(v.value, ViewHeight); }
+            constexpr Value& operator=(vw v) { return assign(v.value, ViewWidth); }
+            constexpr Value& operator=(Type v) { return assign(0, v); }
+            constexpr Value& operator=(float v) { return assign(v, Pixels); }
             
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr Value& operator=(Ty val) {
@@ -102,7 +102,13 @@ namespace Guijo {
         private:
             Type type;
             float enumValue{};
-            Value& assign(float, Type);
+
+            constexpr Value& assign(float newval, Type newtype) {
+                if (newtype != type) value(newval), type = newtype;
+                else value(newval);
+                return *this;
+            }
+
             void classAssign(const Value& v);
 
             template<class Ty> requires std::is_enum_v<Ty>
@@ -144,8 +150,15 @@ namespace Guijo {
             Value right;
             Value bottom;
 
-            Margin& operator=(const Vec4<float>& v);
-            Margin& operator=(float v) { return operator=({ v, v, v, v }); };
+            constexpr Margin& operator=(const Vec4<float>& v) {
+                left = v[0];
+                top = v[1];
+                right = v[2];
+                bottom = v[3];
+                return *this;
+            }
+
+            constexpr Margin& operator=(float v) { return operator=(Vec4<float>{ v, v, v, v }); };
 
             struct Assigner {
                 Margin& margin;
@@ -158,12 +171,12 @@ namespace Guijo {
                 }
             };
 
-            Assigner operator[](StateId id) { return Assigner{ *this, { id } }; }
-            Assigner operator[](StateLink link) { return Assigner{ *this, link }; }
+            constexpr Assigner operator[](StateId id) { return Assigner{ *this, { id } }; }
+            constexpr Assigner operator[](StateLink link) { return Assigner{ *this, link }; }
 
-            void curve(Curve curve) { left.curve(curve), top.curve(curve), right.curve(curve), bottom.curve(curve); };
-            void transition(double millis) { left.transition(millis), top.transition(millis), right.transition(millis), bottom.transition(millis); }
-            void jump(float val) { left.jump(val), top.jump(val), right.jump(val), bottom.jump(val); }
+            constexpr void curve(Curve curve) { left.curve(curve), top.curve(curve), right.curve(curve), bottom.curve(curve); };
+            constexpr void transition(double millis) { left.transition(millis), top.transition(millis), right.transition(millis), bottom.transition(millis); }
+            constexpr void jump(float val) { left.jump(val), top.jump(val), right.jump(val), bottom.jump(val); }
 
         private:
             CalcValue get(std::size_t i);
@@ -175,8 +188,13 @@ namespace Guijo {
             Value width;
             Value height;
 
-            Size& operator=(const Vec2<float>& v);
-            Size& operator=(float v) { return operator=({ v, v }); };
+            constexpr Size& operator=(const Vec2<float>& v) {
+                width = v[0];
+                height = v[1];
+                return *this;
+            }
+
+            constexpr Size& operator=(float v) { return operator=(Vec2<float>{ v, v }); };
 
             struct Assigner {
                 Size& margin;
@@ -187,12 +205,12 @@ namespace Guijo {
                 }
             };
 
-            Assigner operator[](StateId id) { return Assigner{ *this, { id } }; }
-            Assigner operator[](StateLink link) { return Assigner{ *this, link }; }
+            constexpr Assigner operator[](StateId id) { return Assigner{ *this, { id } }; }
+            constexpr Assigner operator[](StateLink link) { return Assigner{ *this, link }; }
 
-            void curve(Curve curve) { width.curve(curve), height.curve(curve); };
-            void transition(double millis) { width.transition(millis), height.transition(millis); }
-            void jump(float val) { width.jump(val), height.jump(val); }
+            constexpr void curve(Curve curve) { width.curve(curve), height.curve(curve); };
+            constexpr void transition(double millis) { width.transition(millis), height.transition(millis); }
+            constexpr void jump(float val) { width.jump(val), height.jump(val); }
 
         private:
             CalcValue get(std::size_t i);
@@ -203,8 +221,14 @@ namespace Guijo {
             Value x;
             Value y;
 
-            Point& operator=(const Vec2<float>& v);
-            Value& operator[](std::size_t i);
+            constexpr Flex::Point& operator=(const Vec2<float>& v) {
+                x = v[0];
+                y = v[1];
+                return *this;
+            }
+        private:
+            CalcValue get(std::size_t i);
+            friend class Box;
         };
 
         struct Class {
