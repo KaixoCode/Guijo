@@ -2,22 +2,20 @@
 #include "Guijo/pch.hpp"
 
 namespace Guijo {
-    namespace Mods {
-        enum {
-            Control = 0x00010000,
-            Shift = 0x00020000,
-            Alt = 0x00040000,
-            NumLock = 0x00080000,
-            CapsLock = 0x00100000,
-            RightControl = 0x01000000,
-            LeftControl = 0x02000000,
-            RightShift = 0x04000000,
-            LeftShift = 0x08000000,
-            LeftAlt = 0x10000000,
-            RightAlt = 0x20000000,
-            Windows = 0x80000000,
-        };
-    }
+    enum class Mods : std::uint32_t {
+        Control = 0x00010000,
+        Shift = 0x00020000,
+        Alt = 0x00040000,
+        NumLock = 0x00080000,
+        CapsLock = 0x00100000,
+        RightControl = 0x01000000,
+        LeftControl = 0x02000000,
+        RightShift = 0x04000000,
+        LeftShift = 0x08000000,
+        LeftAlt = 0x10000000,
+        RightAlt = 0x20000000,
+        Windows = 0x80000000,
+    };
     using KeyMod = std::uint32_t;
     using KeyCode = std::uint32_t;
 

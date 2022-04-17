@@ -5,22 +5,20 @@
 #include "Guijo/Utils/Angle.hpp"
 
 namespace Guijo {
-    namespace Align {
-        enum {
-            Left    = 0x00, // aligned to left on x-axis
-            Right   = 0x01, // aligned to right on x-axis
-            CenterX = 0x02, // aligned to center on x-axis
-            Top     = 0x00, // aligned to top on y-axis
-            Bottom  = 0x10, // aligned to bottom on y-axis
-            CenterY = 0x20, // aligned to center on y-axis
-            Center  = 0x22, // aligned to center on both axis
+    enum class Align {
+        Left    = 0x00, // aligned to left on x-axis
+        Right   = 0x01, // aligned to right on x-axis
+        CenterX = 0x02, // aligned to center on x-axis
+        Top     = 0x00, // aligned to top on y-axis
+        Bottom  = 0x10, // aligned to bottom on y-axis
+        CenterY = 0x20, // aligned to center on y-axis
+        Center  = 0x22, // aligned to center on both axis
 
-            TextTop    = Top,
-            TextBottom = Bottom,
-            Baseline   = 0x40,
-            Middle     = CenterY,
-        };
-    }
+        TextTop    = Top,
+        TextBottom = Bottom,
+        Baseline   = 0x40,
+        Middle     = CenterY,
+    };
     using Alignment = std::uint8_t;
     enum class StrokeCap {
         Round = 0, // (====)  Rounded off

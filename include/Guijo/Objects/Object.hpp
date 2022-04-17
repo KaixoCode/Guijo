@@ -8,9 +8,6 @@
 #include "Guijo/Objects/Flex.hpp"
 
 namespace Guijo {
-    using State = std::int64_t;
-    using StateId = std::size_t;
-
     constexpr StateId Hovering = 0;
     constexpr StateId Focused  = 1; 
     constexpr StateId Pressed  = 2;
@@ -47,12 +44,14 @@ namespace Guijo {
         template<auto Fun> void event();
         template<class Obj> void event();
         template<auto Fun> void state(std::size_t state);
+        template<std::derived_from<StateListener> Ty> void state(Ty&);
 
     protected:
         std::vector<State> m_States{};
         std::vector<Pointer<EventHandler>> m_EventHandlers{};
         std::vector<Pointer<StateHandler>> m_StateHandlers{};
         std::vector<Pointer<Object>> m_Objects{};
+        std::vector<StateListener*> m_StateListeners{};
 
     public: static StateId newState() { return stateCounter++; }
     private: static inline StateId stateCounter = 6;
@@ -96,5 +95,10 @@ namespace Guijo {
     template<auto Fun> 
     void Object::state(std::size_t state) {
         m_StateHandlers.push_back(new TypedStateHandler<Fun>{ state });
+    }
+
+    template<std::derived_from<StateListener> Ty> 
+    void Object::state(Ty& val) {
+        m_StateListeners.push_back(&val);
     }
 }

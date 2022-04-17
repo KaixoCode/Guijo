@@ -2,6 +2,7 @@
 #include "Guijo/Objects/Object.hpp"
 #include "Guijo/Window/Window.hpp"
 #include "Guijo/Event/BasicEvents.hpp"
+#include "Guijo/Event/StateLinked.hpp"
 
 namespace Guijo {
     class Gui {

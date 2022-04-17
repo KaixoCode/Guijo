@@ -44,6 +44,10 @@ State Object::get(StateId v) const {
 
 State Object::set(StateId v, State value) {
     if (v >= m_States.size()) m_States.resize(v + 1);
+    if (m_States[v] != value) {
+        for (auto& _l : m_StateListeners)
+            _l->update(v, value);
+    }
     return m_States[v] = value;
 }
 

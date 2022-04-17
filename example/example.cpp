@@ -6,35 +6,42 @@ using namespace Guijo;
 TODO:
  - class attribute system perhaps
  - link values to state
-
+ - custom logger
 */
+
+
 
 
 class MyObject : public Object {
 public:
-    Color color{};
+    Color color;
+
+    StateLinked<Animated<float>> border{ 
+        { 0.f, 500., Curves::easeOutElastic, } 
+    };
 
     MyObject(Color color) : color(color) {
-        box.margin[0].transition = 100;
-        box.margin[1].transition = 100;
-        box.margin[2].transition = 100;
-        box.margin[3].transition = 100;
-        box.size[0].transition = 100;
-        box.size[1].transition = 100;
+
+        state(border); // register StateLinked value
+
+        border[Hovering] = { 10.f };
+        border[Focused] = { 20.f };
     }
 
     void draw(DrawContext& context) const override {
-        if (get(Pressed)) context.fill(color.brighter(0.6f));
-        else if (get(Hovering)) context.fill(color.brighter(0.8f));
-        else if (get(Focused)) context.fill(color.brighter(1.5f));
-        else context.fill(color);
-
+        context.fill(color);
+        context.stroke({ 255, 255, 255, 255 });
+        context.strokeWeight(border.get());
         context.rect(dimensions());
         Object::draw(context);
     }
 
     bool hovering = false;
     void update() {
+
+
+
+
         //if (get(Hovering)) {
         //    if (!hovering) {
         //        hovering = true;
@@ -83,7 +90,20 @@ constexpr Flex::Box class2{
 int main() {
     constexpr auto aione = sizeof(Object);
 
+    StateLinked<float> a{ 2 };
+    a[Hovering] = 10;
+
+    a.update(Hovering, 1);
+
+    auto& val1 = a.get();
+
+    a.update(Hovering, 0);
+
+    auto& val2 = a.get();
+
+
     Gui gui;
+
 
     Window& window = gui.emplace<Window>({
         .name = "HelloWorld1",

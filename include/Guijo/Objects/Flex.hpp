@@ -1,6 +1,7 @@
 #pragma once
 #include "Guijo/pch.hpp"
 #include "Guijo/Utils/Vec.hpp"
+#include "Guijo/Utils/Animated.hpp"
 
 namespace Guijo {
     class Object;
@@ -61,28 +62,28 @@ namespace Guijo {
             };
             using enum Type;
 
-            constexpr Value() : value(0), type(None) {}
+            constexpr Value() : value(0.f), type(None) {}
             constexpr Value(px v) : value(v.value), type(Pixels) {}
             constexpr Value(pc v) : value(v.value), type(Percent) {}
             constexpr Value(vh v) : value(v.value), type(ViewHeight) {}
             constexpr Value(vw v) : value(v.value), type(ViewWidth) {}
-            constexpr Value(Type t) : value(0), type(t) {}
+            constexpr Value(Type t) : value(0.f), type(t) {}
             constexpr Value(float v) : value(v), type(Pixels) {}
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr Value(Ty val) : value(static_cast<float>(val)), type(Enum) {}
             constexpr Value(const Value& v) : value(v.value), type(v.type) {}
             constexpr Value(Value&& v) noexcept : value(v.value), type(v.type) {}
 
-            Value& operator=(const Value& v) { trigger(v.value, v.type); return *this; }
-            Value& operator=(Value&& v) noexcept { trigger(v.value, v.type); return *this; }
-            Value& operator=(px v) { trigger(v.value, Pixels); return *this; }
-            Value& operator=(pc v) { trigger(v.value, Percent); return *this; }
-            Value& operator=(vh v) { trigger(v.value, ViewHeight); return *this; }
-            Value& operator=(vw v) { trigger(v.value, ViewWidth); return *this; }
-            Value& operator=(Type v) { trigger(0, v); return *this; }
-            Value& operator=(float v) { trigger(v, Pixels); return *this; }
+            Value& operator=(const Value& v) { assign(v.value, v.type); return *this; }
+            Value& operator=(Value&& v) noexcept { assign(v.value, v.type); return *this; }
+            Value& operator=(px v) { assign(v.value, Pixels); return *this; }
+            Value& operator=(pc v) { assign(v.value, Percent); return *this; }
+            Value& operator=(vh v) { assign(v.value, ViewHeight); return *this; }
+            Value& operator=(vw v) { assign(v.value, ViewWidth); return *this; }
+            Value& operator=(Type v) { assign(0, v); return *this; }
+            Value& operator=(float v) { assign(v, Pixels); return *this; }
             template<class Ty> requires std::is_enum_v<Ty>
-            Value& operator=(Ty val) { trigger(static_cast<float>(val), Enum); return *this; }
+            Value& operator=(Ty val) { assign(static_cast<float>(val), Enum); return *this; }
 
             constexpr bool is(Type t) const { return type == t; }
             constexpr bool definite() const { return type != Auto && type != None && type != Infinite; }
@@ -90,19 +91,15 @@ namespace Guijo {
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr bool operator==(Ty val) { return static_cast<float>(val) == value && type == Enum; }
 
-            operator float() { return current(); }
-            float get() { return current(); }
-
-            float transition = 0; // milliseconds
+            operator float() const { return value; }
+            float get() const { return value; }
 
             Value decode(Box&, Value);
+
         private:
             Type type;
-            float value;
-            float pvalue = value;
-            std::chrono::steady_clock::time_point m_ChangeTime{};
-            float current();
-            void trigger(float, Type);
+            Animated<float> value;
+            void assign(float, Type);
         };
 
         struct Box {

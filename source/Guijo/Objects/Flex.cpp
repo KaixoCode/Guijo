@@ -20,25 +20,10 @@ Value Value::decode(Box& obj, Value pval) {
     }
 }
 
-float Value::current() {
-    if (transition == 0) return value;
-
-    const auto _now = std::chrono::steady_clock::now();
-    const auto _duration = std::chrono::duration_cast<std::chrono::milliseconds>(_now - m_ChangeTime).count();
-    const float _percent = std::clamp(_duration / transition, 0.f, 1.f);
-
-    return pvalue * (1.f - _percent) + value * _percent;
+void Value::assign(float newval, Type newtype) {
+    if (newtype != type) value.jump(newval), type = newtype;
+    else value = newval;
 }
-
-void Value::trigger(float newval, Type newtype) {
-    pvalue = current();
-    value = newval;
-    // If change of type, don't transition
-    if (newtype != type) 
-        type = newtype, pvalue = value;
-    m_ChangeTime = std::chrono::steady_clock::now();
-}
-
 
 std::size_t Box::flowDirection() {
     return flex.direction == Direction::Column

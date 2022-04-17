@@ -27,7 +27,6 @@ namespace Guijo {
     private:
         friend class Gui;
         static inline std::size_t windowId = 0;
-        static inline Window* m_MainWindow = nullptr;
 
         WNDCLASS m_WindowClass{};
         HWND m_Handle{};

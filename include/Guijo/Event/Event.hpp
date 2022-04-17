@@ -4,6 +4,13 @@
 #include "Guijo/Utils/Utils.hpp"
 
 namespace Guijo {
+    using State = std::int64_t;
+    using StateId = std::size_t;
+    
+    struct StateListener {
+        virtual void update(StateId id, State value) = 0;
+    };
+
     class Object;
 
     struct Event {
