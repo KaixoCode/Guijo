@@ -6,7 +6,7 @@ set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${GUIJO_SRC}/cmake/")
 
 project (${GUIJO})
 
-add_library(GLAD STATIC libs/glad/glad.c)
+add_library(GLAD STATIC libs/glad/glad.cpp)
 
 find_package(OpenGL REQUIRED)
 
