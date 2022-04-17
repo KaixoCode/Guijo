@@ -71,10 +71,10 @@ namespace Guijo {
             template<class Ty> requires std::is_enum_v<Ty>
             constexpr Value(Ty val) : value(static_cast<float>(val)), type(Enum) {}
             constexpr Value(const Value& v) : value(v.value), type(v.type) {}
-            constexpr Value(Value&& v) : value(v.value), type(v.type) {}
+            constexpr Value(Value&& v) noexcept : value(v.value), type(v.type) {}
 
             Value& operator=(const Value& v) { trigger(v.value, v.type); return *this; }
-            Value& operator=(Value&& v) { trigger(v.value, v.type); return *this; }
+            Value& operator=(Value&& v) noexcept { trigger(v.value, v.type); return *this; }
             Value& operator=(px v) { trigger(v.value, Pixels); return *this; }
             Value& operator=(pc v) { trigger(v.value, Percent); return *this; }
             Value& operator=(vh v) { trigger(v.value, ViewHeight); return *this; }
@@ -150,11 +150,11 @@ namespace Guijo {
             bool invalidated = true;          // Does this box need to be recalculated?
             
             void calcAvailableSize();
-            int flowDirection();
-            Value addPadding(Value, int, Value);
-            Value addMargin(Value, int, Value);
-            Value subPadding(Value, int, Value);
-            Value subMargin(Value, int, Value);
+            std::size_t flowDirection();
+            Value addPadding(Value, std::size_t, Value);
+            Value addMargin(Value, std::size_t, Value);
+            Value subPadding(Value, std::size_t, Value);
+            Value subMargin(Value, std::size_t, Value);
         };
     }
 }

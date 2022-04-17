@@ -10,11 +10,11 @@ Value Value::decode(Box& obj, Value pval) {
     case Pixels: return get();
     // Percent uses parent size
     case Percent: // If pval is percent or indefinite, we don't know...
-        if (!pval.is(Percent) && pval.definite()) return pval.get() * get() / 100.;
+        if (!pval.is(Percent) && pval.definite()) return pval.get() * get() / 100.f;
         else return { Value::Infinite };
     // View width and height are percent of window size
-    case ViewWidth: return obj.windowSize.width() * get() / 100.;
-    case ViewHeight: return obj.windowSize.height() * get() / 100.;
+    case ViewWidth: return obj.windowSize.width() * get() / 100.f;
+    case ViewHeight: return obj.windowSize.height() * get() / 100.f;
     // Remain at current value if we can't decode
     default: return *this;
     }
@@ -40,13 +40,13 @@ void Value::trigger(float newval, Type newtype) {
 }
 
 
-int Box::flowDirection() {
+std::size_t Box::flowDirection() {
     return flex.direction == Direction::Column
         || flex.direction == Direction::ColumnReverse;
 }
 
 void Box::calcAvailableSize() {
-    auto _checkDim = [this](int dim) -> Value {
+    auto _checkDim = [this](std::size_t dim) -> Value {
         Value _value{};
         Value _parent = parent->innerAvailableSize[dim];
         Value _size = size[dim].decode(*this, _parent);
@@ -77,7 +77,7 @@ void Box::calcAvailableSize() {
     };
 }
 
-Value Box::addPadding(Value value, int dim, Value pval) {
+Value Box::addPadding(Value value, std::size_t dim, Value pval) {
     Value _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
     Value _padding1 = padding[dim].decode(*this, pval);
@@ -87,7 +87,7 @@ Value Box::addPadding(Value value, int dim, Value pval) {
     return value;
 }
 
-Value Box::addMargin(Value value, int dim, Value pval) {
+Value Box::addMargin(Value value, std::size_t dim, Value pval) {
     Value _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
     Value _margin1 = margin[dim].decode(*this, pval);
@@ -96,7 +96,8 @@ Value Box::addMargin(Value value, int dim, Value pval) {
     if (_margin2.definite()) value = value + _margin2;
     return value;
 }
-Value Box::subPadding(Value value, int dim, Value pval) {
+
+Value Box::subPadding(Value value, std::size_t dim, Value pval) {
     Value _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
     Value _padding1 = padding[dim].decode(*this, pval);
@@ -106,7 +107,7 @@ Value Box::subPadding(Value value, int dim, Value pval) {
     return value;
 }
 
-Value Box::subMargin(Value value, int dim, Value pval) {
+Value Box::subMargin(Value value, std::size_t dim, Value pval) {
     Value _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
     Value _margin1 = margin[dim].decode(*this, pval);
@@ -161,8 +162,8 @@ void Box::format(Object& self) {
     }
     
     // Get dimensions
-    auto _main = flowDirection();
-    auto _cross = _main == 1 ? 0 : 1;
+    std::size_t _main = flowDirection();
+    std::size_t _cross = _main == 1 ? 0 : 1;
     auto _parentSize = parent ? parent->innerAvailableSize : Size<Value>{ windowSize };
 
     // ===================================================
@@ -427,7 +428,7 @@ void Box::format(Object& self) {
 
     // Check container for definite cross-size
     auto _crossSize = size[_cross].decode(*this, _parentSize[_cross]);
-    auto _innerCrossSize = _crossSize; 
+    Value _innerCrossSize = _crossSize; 
     if (_crossSize.definite()) {
         // Remove padding from the definite crossSize of the container
         _innerCrossSize = subPadding(_innerCrossSize, _cross, _parentSize[_cross]);
@@ -471,7 +472,7 @@ void Box::format(Object& self) {
     for (auto& _line : _flexLines) {
         _usedCrossSpace += _line.crossSize;
         for (auto& _item : _line.items) {
-            auto _selfAlign = _item->box.align.self; // Find self align
+            Value _selfAlign = _item->box.align.self; // Find self align
             if (_item->box.align.self.is(Value::Auto)) // if auto, use container's item align
                 _selfAlign = align.items;
             if (!_selfAlign.definite()) _selfAlign = Align::Stretch; // fallback
@@ -528,7 +529,7 @@ void Box::format(Object& self) {
     Align _content = Align::Start;
     if (align.content.is(Value::Enum))
         _content = static_cast<Align>(static_cast<float>(align.content));
-    float _crossStart = _contentBox[_cross], _crossDistance = 0, _crossDir = 1;
+    float _crossStart = _contentBox[_cross], _crossDistance = 0.f, _crossDir = 1.f;
     switch (_content) {
     case Align::Start:
         _crossStart = _contentBox[_cross];
@@ -542,16 +543,16 @@ void Box::format(Object& self) {
         break;
     case Align::Between:
         _crossStart = _contentBox[_cross];
-        if (_flexLines.size() == 1) _crossDistance = 0;
-        else _crossDistance = std::max(0.f, _freeCrossSpace / (_flexLines.size() - 1));
+        if (_flexLines.size() == 1) _crossDistance = 0.f;
+        else _crossDistance = std::max(0.f, _freeCrossSpace / (_flexLines.size() - 1.f));
         break;
     case Align::Around:
-        _crossStart = _contentBox[_cross] + (_freeCrossSpace / _flexLines.size()) / 2.;
+        _crossStart = _contentBox[_cross] + (_freeCrossSpace / _flexLines.size()) / 2.f;
         _crossDistance = _freeCrossSpace / _flexLines.size();
         break;
     case Align::Evenly:
-        _crossStart = _contentBox[_cross] + _freeCrossSpace / (_flexLines.size() + 1);
-        _crossDistance = _freeCrossSpace / (_flexLines.size() + 1);
+        _crossStart = _contentBox[_cross] + _freeCrossSpace / (_flexLines.size() + 1.f);
+        _crossDistance = _freeCrossSpace / (_flexLines.size() + 1.f);
         break;
     }
 

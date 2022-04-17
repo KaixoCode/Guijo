@@ -5,7 +5,7 @@
 #include "Guijo/Objects/Object.hpp"
 
 namespace Guijo {
-    enum MouseButton : std::uint8_t {
+    enum class MouseButton : std::uint8_t {
         None = 0x0000,
         Left = 0x0001,
         Right = 0x0002,

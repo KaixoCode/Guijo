@@ -2,7 +2,12 @@
 
 using namespace Guijo;
 
+/*
+TODO:
+ - class attribute system perhaps
+ - link values to state
 
+*/
 
 
 class MyObject : public Object {
@@ -19,9 +24,9 @@ public:
     }
 
     void draw(DrawContext& context) const override {
-        if (get(Pressed)) context.fill(color.brighter(0.6));
-        else if (get(Hovering)) context.fill(color.brighter(0.8));
-        else if (get(Focused)) context.fill(color.brighter(1.5));
+        if (get(Pressed)) context.fill(color.brighter(0.6f));
+        else if (get(Hovering)) context.fill(color.brighter(0.8f));
+        else if (get(Focused)) context.fill(color.brighter(1.5f));
         else context.fill(color);
 
         context.rect(dimensions());

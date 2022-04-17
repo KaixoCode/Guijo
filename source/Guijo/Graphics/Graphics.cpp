@@ -17,7 +17,8 @@ void GraphicsBase::render() {
 
     while (!commands.empty()) {
         runCommand(commands.front(),
-            std::make_index_sequence<Commands::Amount>{});
+            std::make_index_sequence<
+            static_cast<std::size_t>(Commands::Amount)>{});
         commands.pop();
     }
 }

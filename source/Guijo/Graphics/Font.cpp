@@ -62,8 +62,8 @@ void Font::CharMap::initialize() {
                 bool notAlpha = (x % 4) != 3;
 
                 // Make sure subx and suby within boundaries
-                if (notAlpha && subx < m_Face->glyph->bitmap.width &&
-                    suby >= 0 && suby < m_Face->glyph->bitmap.rows) {
+                if (notAlpha && subx < static_cast<int>(m_Face->glyph->bitmap.width) &&
+                    suby >= 0 && suby < static_cast<int>(m_Face->glyph->bitmap.rows)) {
                     // Sub index using amount of bytes * y + x
                     int subindex = suby * m_Face->glyph->bitmap.pitch + subx;
                     value = m_Face->glyph->bitmap.buffer[subindex];
@@ -150,14 +150,18 @@ void Font::load(std::string_view path, std::string_view name) {
 
 float Font::width(const char c, std::string_view font, float size) {
     if (!GraphicsBase::Fonts.contains(font)) return 0;
-    return (*GraphicsBase::Fonts.find(font)).second.size(size).character(c).advance >> 6;
+    float _scale = size / std::round(size);
+    return _scale * static_cast<float>((*GraphicsBase::Fonts.find(font))
+        .second.size(static_cast<int>(size)).character(c).advance >> 6);
 }
 
 float Font::width(std::string_view c, std::string_view font, float size) {
     if (!GraphicsBase::Fonts.contains(font)) return 0;
+    float _scale = size / std::round(size);
     float _width = 0;
-    auto& _font = (*GraphicsBase::Fonts.find(font)).second.size(size);
+    auto& _font = (*GraphicsBase::Fonts.find(font))
+        .second.size(static_cast<int>(size));
     for (auto& _c : c)
         _width += _font.character(_c).advance >> 6;
-    return _width;
+    return _width * _scale;
 }

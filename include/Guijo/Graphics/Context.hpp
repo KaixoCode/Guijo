@@ -39,15 +39,16 @@ namespace Guijo {
         return std::move(_ptr);
     }
 
-    enum Commands : std::size_t {
+    enum class Commands : std::size_t {
         Fill = 0, Stroke, StrokeWeight, Rect, Line, Circle, Triangle, 
         Text, FontSize, SetFont, TextAlign,
         Translate, PushMatrix, PopMatrix, Viewport,
         Clip, PushClip, PopClip, ClearClip,
         Amount
     };
+    using enum Commands;
 
-    template<std::size_t Is> struct Command;
+    template<Commands Is> struct Command;
     template<> struct Command<Fill> { Color color; };
     template<> struct Command<Stroke> { Color color; };
     template<> struct Command<StrokeWeight> { float weight; };
@@ -69,13 +70,13 @@ namespace Guijo {
     template<> struct Command<ClearClip> { };
 
     struct CommandData {
-        template<std::size_t Ty> CommandData(const Command<Ty>& val)
-            : type(static_cast<Commands>(Ty)), data(make(val)) {}
+        template<Commands Ty> CommandData(const Command<Ty>& val)
+            : type(Ty), data(make(val)) {}
 
         Commands type;
         std::unique_ptr<uint8_t[]> data;
 
-        template<std::size_t Ty> Command<Ty>& get() { 
+        template<Commands Ty> Command<Ty>& get() {
             return *reinterpret_cast<Command<Ty>*>(data.get()); 
         }
     };

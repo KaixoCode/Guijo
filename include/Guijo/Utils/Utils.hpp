@@ -2,6 +2,58 @@
 #include "Guijo/pch.hpp"
 
 namespace Guijo {
+
+    template<class Ty> concept enum_type = std::is_enum_v<Ty>;
+
+    template<enum_type Enum>
+    constexpr std::underlying_type_t<Enum> to_underlying(Enum e) noexcept { 
+        return static_cast<std::underlying_type_t<Enum>>(e);
+    }
+    // Enum operators
+    template<enum_type A, enum_type B>
+    constexpr auto operator|(A a, B b) 
+        -> decltype(to_underlying(a) | to_underlying(b)) { return to_underlying(a) | to_underlying(b); }
+    template<enum_type A, std::integral B>
+    constexpr auto operator|(A a, B b)
+        -> decltype(to_underlying(a) | b) { return to_underlying(a) | b; }
+    template<std::integral A, enum_type B>
+    constexpr auto operator|(A a, B b)
+        -> decltype(a | to_underlying(b)) { return a | to_underlying(b); }
+    template<enum_type A, enum_type B>
+    constexpr auto operator&(A a, B b)
+        -> decltype(to_underlying(a) & to_underlying(b)) { return to_underlying(a) & to_underlying(b); }
+    template<enum_type A, std::integral B>
+    constexpr auto operator&(A a, B b)
+        -> decltype(to_underlying(a) & b) { return to_underlying(a) & b; }
+    template<std::integral A, enum_type B>
+    constexpr auto operator&(A a, B b)
+        -> decltype(a & to_underlying(b)) { return a & to_underlying(b); }
+    template<enum_type A, enum_type B>
+    constexpr auto operator^(A a, B b)
+        -> decltype(to_underlying(a) ^ to_underlying(b)) { return to_underlying(a) ^ to_underlying(b); }
+    template<enum_type A, std::integral B>
+    constexpr auto operator^(A a, B b)
+        -> decltype(to_underlying(a) ^ b) { return to_underlying(a) ^ b; }
+    template<std::integral A, enum_type B>
+    constexpr auto operator^(A a, B b)
+        -> decltype(a ^ to_underlying(b)) { return a ^ to_underlying(b); }
+    template<std::integral A, enum_type B>
+    constexpr auto operator|=(A a, B b)
+        -> decltype(a |= to_underlying(b)) { return a |= to_underlying(b); }
+    template<std::integral A, enum_type B>
+    constexpr auto operator&=(A a, B b)
+        -> decltype(a |= to_underlying(b)) { return a |= to_underlying(b); }
+    template<std::integral A, enum_type B>
+    constexpr auto operator^=(A a, B b)
+        -> decltype(a |= to_underlying(b)) { return a |= to_underlying(b); }
+    template<std::integral A, enum_type B>
+    constexpr auto operator==(A a, B b)
+        -> decltype(a == to_underlying(b)) { return a == to_underlying(b); }
+    template<enum_type A, std::integral B>
+    constexpr auto operator==(A a, B b)
+        -> decltype(to_underlying(a) == b) { return to_underlying(a) == b; }
+
+
     namespace detail {
         // Helpers for finding default event methods
         template<class Ty> concept m_FindMP = requires(decltype(&Ty::mousePress) a) { a; };

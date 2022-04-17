@@ -40,7 +40,8 @@ namespace Guijo {
 
         template<std::size_t ...Is> 
         void runCommand(CommandData& c, std::index_sequence<Is...>) {
-            ((c.type == Is ? (runCommand(c.get<Is>()), true) : false) || ...);
+            ((c.type == static_cast<Commands>(Is) ? (runCommand(
+                c.get<static_cast<Commands>(Is)>()), true) : false) || ...);
         }
 
         virtual void runCommand(Command<Fill>&);
