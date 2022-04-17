@@ -275,9 +275,9 @@ namespace Guijo {
 
             Value justify = Start; // Justify content (inline)
             struct {
-                Value content = Stretch; // Align content (block)
-                Value items = Stretch;   // Align items (Individual Items)
-                Value self = Stretch;    // Align self
+                Value content = Stretch;  // Align content (block)
+                Value items = Stretch;    // Align items (Individual Items)
+                Value self = Value::Auto; // Align self
             } align{};
 
             bool use = true; // Use FlexBox sizing for children
