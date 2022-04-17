@@ -78,39 +78,39 @@ void Box::calcAvailableSize() {
 }
 
 Value Box::addPadding(Value value, int dim, Value pval) {
+    Value _value = value.decode(*this, pval);
+    if (!_value.definite()) return value;
     Value _padding1 = padding[dim].decode(*this, pval);
     Value _padding2 = padding[dim + 2].decode(*this, pval);
-
-    // Finally adjust for padding, since we need available size for children
     if (_padding1.definite()) value = value + _padding1;
     if (_padding2.definite()) value = value + _padding2;
     return value;
 }
 
 Value Box::addMargin(Value value, int dim, Value pval) {
+    Value _value = value.decode(*this, pval);
+    if (!_value.definite()) return value;
     Value _margin1 = margin[dim].decode(*this, pval);
     Value _margin2 = margin[dim + 2].decode(*this, pval);
-
-    // Finally adjust for padding, since we need available size for children
     if (_margin1.definite()) value = value + _margin1;
     if (_margin2.definite()) value = value + _margin2;
     return value;
 }
 Value Box::subPadding(Value value, int dim, Value pval) {
+    Value _value = value.decode(*this, pval);
+    if (!_value.definite()) return value;
     Value _padding1 = padding[dim].decode(*this, pval);
     Value _padding2 = padding[dim + 2].decode(*this, pval);
-
-    // Finally adjust for padding, since we need available size for children
     if (_padding1.definite()) value = value - _padding1;
     if (_padding2.definite()) value = value - _padding2;
     return value;
 }
 
 Value Box::subMargin(Value value, int dim, Value pval) {
+    Value _value = value.decode(*this, pval);
+    if (!_value.definite()) return value;
     Value _margin1 = margin[dim].decode(*this, pval);
     Value _margin2 = margin[dim + 2].decode(*this, pval);
-
-    // Finally adjust for padding, since we need available size for children
     if (_margin1.definite()) value = value - _margin1;
     if (_margin2.definite()) value = value - _margin2;
     return value;
@@ -240,13 +240,14 @@ void Box::format(Object& self) {
         float _usedSpace = 0;  // used space
         float _flexGrow = 0;   // sum of flex grow 
         float _flexShrink = 0; // sum of flex shrink
+        bool _first = true; // Can't have 0 in a line, so first can't stop a line
         for (auto _i = _items.begin(); _i != _items.end(); ++_i) {
             auto& _item = (*_i)->box;
             float _thisSize = _item.outerHypoSize[_main];
             float _thisGrow = _item.flex.grow;
             float _thisShrink = _item.flex.shrink;
             // Check if going to overflow
-            if (_usedSpace + _thisSize > _availableSize) {
+            if (!_first && _usedSpace + _thisSize > _availableSize) {
                 // Create line from start to item (item is end of line, so not included!)
                 _flexLines.push_back({ { _start, _i },
                     _usedSpace, _flexGrow, _flexShrink });
@@ -254,11 +255,11 @@ void Box::format(Object& self) {
                 _flexGrow = _thisGrow;
                 _flexShrink = _thisShrink;
                 _start = _i; // Set start of next line
-            }
-            else { // If no overflow, add to used space and grow/shrink
+            } else { // If no overflow, add to used space and grow/shrink
                 _usedSpace += _thisSize;
                 _flexGrow += _thisGrow;
                 _flexShrink += _thisShrink;
+                _first = false;
             }
         }
         // If not all have been added to lines, add rest to final line
@@ -515,8 +516,8 @@ void Box::format(Object& self) {
     Dimensions<float> _contentBox;
     _contentBox[_cross] = self[_cross] + _padding[_cross];
     _contentBox[_main] = self[_main] + _padding[_main];
-    _contentBox[_cross + 2] = usedSize[_cross] + _padding[_cross + 2];
-    _contentBox[_main + 2] = usedSize[_main] + _padding[_main + 2];
+    _contentBox[_cross + 2] = usedSize[_cross] - _padding[_cross + 2] - _padding[_cross];
+    _contentBox[_main + 2] = usedSize[_main] - _padding[_main + 2] - _padding[_main];
 
     // Determine the flex-direction
     Direction _direction = Direction::Row;
@@ -527,7 +528,7 @@ void Box::format(Object& self) {
     Align _content = Align::Start;
     if (align.content.is(Value::Enum))
         _content = static_cast<Align>(static_cast<float>(align.content));
-    float _crossStart = 0, _crossDistance = 0, _crossDir = 1;
+    float _crossStart = _contentBox[_cross], _crossDistance = 0, _crossDir = 1;
     switch (_content) {
     case Align::Start:
         _crossStart = _contentBox[_cross];
