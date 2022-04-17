@@ -22,8 +22,8 @@ namespace Guijo {
     struct MouseDrag : Event {
         MouseDrag(Point<float> source, Point<float> pos, MouseButtons buttons, KeyMod mod)
             : source(source), pos(pos), buttons(buttons), mod(mod) {}
-        Point<float> source;   // Press position of cursor
-        Point<float> pos;      // Position of cursor
+        Point<float> source;  // Press position of cursor
+        Point<float> pos;     // Position of cursor
         MouseButtons buttons; // Buttons held down
         KeyMod mod;           // Key mods
         bool forward(const Object& c) const override { return c.get(Pressed); };

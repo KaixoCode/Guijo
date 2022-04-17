@@ -28,6 +28,22 @@ Object::Object() {
     state<[](const MousePress&, Object& c) { return c.get(Hovering); }>(Pressed);
     state<[](const MouseRelease&, Object&) { return false; }>(Pressed);
     state<[](const MouseExit&, Object&) { return false; }>(Hovering);
+    // Link all FlexBox attributes as state listeners
+    link(box.size.width);
+    link(box.size.height);
+    link(box.min.width);
+    link(box.max.height);
+    link(box.margin.left);
+    link(box.margin.top);
+    link(box.margin.right);
+    link(box.margin.bottom);
+    link(box.padding.left);
+    link(box.padding.top);
+    link(box.padding.right);
+    link(box.padding.bottom);
+    link(box.flex.basis);
+    link(box.flex.grow);
+    link(box.flex.shrink);
 }
 
 void Object::draw(DrawContext& context) const {

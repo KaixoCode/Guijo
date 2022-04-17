@@ -4,25 +4,111 @@
 using namespace Guijo;
 using namespace Flex;
 
-Value Value::decode(Box& obj, Value pval) {
+CalcValue CalcValue::decode(Box& obj, CalcValue pval) {
     switch (type) {
     // Normal/Pixels is just the value
-    case Pixels: return get();
+    case Value::Pixels: return { type, value };
     // Percent uses parent size
-    case Percent: // If pval is percent or indefinite, we don't know...
-        if (!pval.is(Percent) && pval.definite()) return pval.get() * get() / 100.f;
+    case Value::Percent: // If pval is percent or indefinite, we don't know...
+        if (!pval.is(Value::Percent) && pval.definite()) return { Value::Pixels, pval.value * value / 100.f };
         else return { Value::Infinite };
     // View width and height are percent of window size
-    case ViewWidth: return obj.windowSize.width() * get() / 100.f;
-    case ViewHeight: return obj.windowSize.height() * get() / 100.f;
+    case Value::ViewWidth: return { Value::Pixels, obj.windowSize[0] * value / 100.f };
+    case Value::ViewHeight: return { Value::Pixels, obj.windowSize[1] * value / 100.f };
     // Remain at current value if we can't decode
     default: return *this;
     }
 }
 
-void Value::assign(float newval, Type newtype) {
-    if (newtype != type) value.jump(newval), type = newtype;
-    else value = newval;
+Value& Value::assign(float newval, Type newtype) {
+    if (newtype != type) value(newval), type = newtype;
+    else value(newval);
+    return *this;
+}
+
+void Value::classAssign(const Value& v) {
+    if (v.type != Unset) {
+        type = v.type;
+        if (v.type == Enum) enumValue = v.enumValue;
+        else Parent::operator=(v.m_Default);
+    }
+    for (auto& i : v.m_Values)
+        m_Values.push_back(i);
+
+    if (v.m_Curve != Curves::linear) m_Curve = v.m_Curve;
+    if (v.m_Time != 0) m_Time = v.m_Time;
+}
+
+Margin& Margin::operator=(const Vec4<float>& v) {
+    left = v[0];
+    top = v[1];
+    right = v[0];
+    bottom = v[1];
+    return *this;
+}
+
+CalcValue Margin::get(std::size_t i) {
+    switch (i) {
+    case 0: return { left.getType(), left.get() };
+    case 1: return { top.getType(), top.get() };;
+    case 2: return { right.getType(), right.get() };;
+    default: return { bottom.getType(), bottom.get() };;
+    }
+}
+
+Flex::Size& Flex::Size::operator=(const Vec2<float>& v) {
+    width = v[0];
+    height = v[1];
+    return *this;
+}
+
+CalcValue Flex::Size::get(std::size_t i) {
+    switch (i) {
+    case 0: return { width.getType(), width.get() };
+    default: return { height.getType(), height.get() };
+    }
+}
+
+Flex::Point& Flex::Point::operator=(const Vec2<float>& v) {
+    x = v[0];
+    y = v[1];
+    return *this;
+}
+
+Value& Flex::Point::operator[](std::size_t i) {
+    switch (i) {
+    case 0: return x;
+    default: return y;
+    }
+}
+
+void Box::operator=(const Class& v) {
+    overflow.x.classAssign(v.overflow.x);
+    overflow.y.classAssign(v.overflow.y);
+    size.width.classAssign(v.size.width);
+    size.height.classAssign(v.size.height);
+    min.width.classAssign(v.min.width);
+    min.height.classAssign(v.min.height);
+    max.width.classAssign(v.max.width);
+    max.height.classAssign(v.max.height);
+    margin.left.classAssign(v.margin.left);
+    margin.top.classAssign(v.margin.top);
+    margin.right.classAssign(v.margin.right);
+    margin.bottom.classAssign(v.margin.bottom);
+    padding.left.classAssign(v.padding.left);
+    padding.top.classAssign(v.padding.top);
+    padding.right.classAssign(v.padding.right);
+    padding.bottom.classAssign(v.padding.bottom);
+    position.classAssign(v.position);
+    flex.direction.classAssign(v.flex.direction);
+    flex.basis.classAssign(v.flex.basis);
+    flex.grow.classAssign(v.flex.grow);
+    flex.shrink.classAssign(v.flex.shrink);
+    flex.wrap.classAssign(v.flex.wrap);
+    justify.classAssign(v.justify);
+    align.content.classAssign(v.align.content);
+    align.items.classAssign(v.align.items);
+    align.self.classAssign(v.align.self);
 }
 
 std::size_t Box::flowDirection() {
@@ -31,29 +117,29 @@ std::size_t Box::flowDirection() {
 }
 
 void Box::calcAvailableSize() {
-    auto _checkDim = [this](std::size_t dim) -> Value {
-        Value _value{};
-        Value _parent = parent->innerAvailableSize[dim];
-        Value _size = size[dim].decode(*this, _parent);
-        Value _min = min[dim].decode(*this, _parent);
-        Value _max = max[dim].decode(*this, _parent);
-        Value _margin1 = margin[dim].decode(*this, _parent);
-        Value _margin2 = margin[dim + 2].decode(*this, _parent);
+    auto _checkDim = [this](std::size_t dim) -> CalcValue {
+        CalcValue _value{};
+        CalcValue _parent = parent->innerAvailableSize[dim];
+        CalcValue _size = size.get(dim).decode(*this, _parent);
+        CalcValue _min = min.get(dim).decode(*this, _parent);
+        CalcValue _max = max.get(dim).decode(*this, _parent);
+        CalcValue _margin1 = margin.get(dim).decode(*this, _parent);
+        CalcValue _margin2 = margin.get(dim + 2).decode(*this, _parent);
 
         // If used size is definite, content box has been defined for that dimension, so use that
         if (parent->use && usedSize[dim].definite()) _value = usedSize[dim];
         else if (parent->use && usedSize[dim].definite()) _value = usedSize[dim];
         else if (_size.definite()) _value = _size;
-        else return Value::Infinite; // Fallback to infinite size
+        else return { Value::Infinite }; // Fallback to infinite size
 
         // Constrain size to min/max if definite
-        if (_min.definite()) _value = std::max(_value.get(), _min.get());
-        if (_max.definite()) _value = std::min(_value.get(), _max.get());
+        if (_min.definite()) _value = std::max(_value.value, _min.value);
+        if (_max.definite()) _value = std::min(_value.value, _max.value);
 
         return _value;
     };
 
-    if (parent == nullptr) availableSize = windowSize; // No parent at all: use window size
+    if (parent == nullptr) availableSize = { windowSize[0], windowSize[1] }; // No parent at all: use window size
     else availableSize = { _checkDim(0), _checkDim(1) };
 
     innerAvailableSize = { 
@@ -62,53 +148,53 @@ void Box::calcAvailableSize() {
     };
 }
 
-Value Box::addPadding(Value value, std::size_t dim, Value pval) {
-    Value _value = value.decode(*this, pval);
+CalcValue Box::addPadding(CalcValue value, std::size_t dim, CalcValue pval) {
+    CalcValue _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
-    Value _padding1 = padding[dim].decode(*this, pval);
-    Value _padding2 = padding[dim + 2].decode(*this, pval);
+    CalcValue _padding1 = padding.get(dim).decode(*this, pval);
+    CalcValue _padding2 = padding.get(dim + 2).decode(*this, pval);
     if (_padding1.definite()) value = value + _padding1;
     if (_padding2.definite()) value = value + _padding2;
     return value;
 }
 
-Value Box::addMargin(Value value, std::size_t dim, Value pval) {
-    Value _value = value.decode(*this, pval);
+CalcValue Box::addMargin(CalcValue value, std::size_t dim, CalcValue pval) {
+    CalcValue _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
-    Value _margin1 = margin[dim].decode(*this, pval);
-    Value _margin2 = margin[dim + 2].decode(*this, pval);
+    CalcValue _margin1 = margin.get(dim).decode(*this, pval);
+    CalcValue _margin2 = margin.get(dim + 2).decode(*this, pval);
     if (_margin1.definite()) value = value + _margin1;
     if (_margin2.definite()) value = value + _margin2;
     return value;
 }
 
-Value Box::subPadding(Value value, std::size_t dim, Value pval) {
-    Value _value = value.decode(*this, pval);
+CalcValue Box::subPadding(CalcValue value, std::size_t dim, CalcValue pval) {
+    CalcValue _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
-    Value _padding1 = padding[dim].decode(*this, pval);
-    Value _padding2 = padding[dim + 2].decode(*this, pval);
+    CalcValue _padding1 = padding.get(dim).decode(*this, pval);
+    CalcValue _padding2 = padding.get(dim + 2).decode(*this, pval);
     if (_padding1.definite()) value = value - _padding1;
     if (_padding2.definite()) value = value - _padding2;
     return value;
 }
 
-Value Box::subMargin(Value value, std::size_t dim, Value pval) {
-    Value _value = value.decode(*this, pval);
+CalcValue Box::subMargin(CalcValue value, std::size_t dim, CalcValue pval) {
+    CalcValue _value = value.decode(*this, pval);
     if (!_value.definite()) return value;
-    Value _margin1 = margin[dim].decode(*this, pval);
-    Value _margin2 = margin[dim + 2].decode(*this, pval);
+    CalcValue _margin1 = margin.get(dim).decode(*this, pval);
+    CalcValue _margin2 = margin.get(dim + 2).decode(*this, pval);
     if (_margin1.definite()) value = value - _margin1;
     if (_margin2.definite()) value = value - _margin2;
     return value;
 }
 
-Value clamp(Box& self, const Value& pval, Value v, Value min, Value max) {
+CalcValue clamp(Box& self, const CalcValue& pval, CalcValue v, CalcValue min, CalcValue max) {
     auto _v = v.decode(self, pval);
     auto _min = min.decode(self, pval);
     auto _max = max.decode(self, pval);
     if (!_v.definite()) return _v;
-    if (_min.definite()) v = std::max(_min.get(), v.get());
-    if (_max.definite()) v = std::min(_max.get(), v.get());
+    if (_min.definite()) v = std::max(_min.value, v.value);
+    if (_max.definite()) v = std::min(_max.value, v.value);
     return v;
 }
 
@@ -149,7 +235,7 @@ void Box::format(Object& self) {
     // Get dimensions
     std::size_t _main = flowDirection();
     std::size_t _cross = _main == 1 ? 0 : 1;
-    auto _parentSize = parent ? parent->innerAvailableSize : Size<Value>{ windowSize };
+    auto _parentSize = parent ? parent->innerAvailableSize : Vec2<CalcValue>{ windowSize[0], windowSize[1] };
 
     // ===================================================
     // Step 2: calculate the preferred size of all the items
@@ -163,15 +249,16 @@ void Box::format(Object& self) {
         _item.usedSize = { Value::Auto, Value::Auto }; 
         
         // Calculate the flex-base-size of this item
-        auto _flexBasis = _item.flex.basis.decode(_item, innerAvailableSize[_main]);
-        auto _size = _item.size[_main].decode(_item, innerAvailableSize[_main]);
+        auto _flexBasis = CalcValue{ _item.flex.basis.getType(), 
+            _item.flex.basis}.decode(_item, innerAvailableSize[_main]);
+        auto _size = _item.size.get(_main).decode(_item, innerAvailableSize[_main]);
         if (_flexBasis.definite()) _item.flexBaseSize = _flexBasis;
         else if (_size.definite()) _item.flexBaseSize = _size;
         else _item.flexBaseSize = 0.f; // fallback to 0
 
         // hypoMainSize is flexBaseSize clamped to min/max values
         _item.hypoSize[_main] = clamp(_item, innerAvailableSize[_main],
-            _item.flexBaseSize, _item.min[_main], _item.max[_main]);
+            _item.flexBaseSize, _item.min.get(_main), _item.max.get(_main));
 
         // outerHypoMainSize is hypoMainSize + margin
         _item.outerHypoSize[_main] = _item.hypoSize[_main];
@@ -329,7 +416,7 @@ void Box::format(Object& self) {
                     if (_item.freezeSize) continue; // ignore frozen
                     _sumFlexFactor += _type == Shrink 
                         ? _item.flex.shrink * _item.flexBaseSize
-                        : static_cast<float>(_item.flex.grow);
+                        : _item.flex.grow.get();
                 }
                 // Adjust size of items proportional to their 
                 // flex-factor using the flex-factor sum
@@ -355,8 +442,8 @@ void Box::format(Object& self) {
                 auto& _item = _i->box;
                 if (_item.freezeSize) continue; // ignore frozen
                 // test for min-violation
-                if (_item.min[_main].definite()) {
-                    auto _min = _item.min[_main].decode(_item, _availableSize);
+                if (_item.min.get(_main).definite()) {
+                    auto _min = _item.min.get(_main).decode(_item, _availableSize);
                     if (_item.targetSize[_main] < _min) {
                         _totalViolation += _min - _item.targetSize[_main];
                         _item.violationType = false;
@@ -370,8 +457,8 @@ void Box::format(Object& self) {
                     }
                 }
                 // test for max-violation
-                if (_item.max[_main].definite()) {
-                    auto _max = _item.max[_main].decode(_item, _availableSize);
+                if (_item.max.get(_main).definite()) {
+                    auto _max = _item.max.get(_main).decode(_item, _availableSize);
                     if (_item.targetSize[_main] > _max) {
                         _totalViolation += _max - _item.targetSize[_main];
                         _item.violationType = true;
@@ -412,8 +499,8 @@ void Box::format(Object& self) {
     }
 
     // Check container for definite cross-size
-    auto _crossSize = size[_cross].decode(*this, _parentSize[_cross]);
-    Value _innerCrossSize = _crossSize; 
+    auto _crossSize = size.get(_cross).decode(*this, _parentSize[_cross]);
+    CalcValue _innerCrossSize = _crossSize;
     if (_crossSize.definite()) {
         // Remove padding from the definite crossSize of the container
         _innerCrossSize = subPadding(_innerCrossSize, _cross, _parentSize[_cross]);
@@ -436,10 +523,10 @@ void Box::format(Object& self) {
 
     // If only 1 line, clamp it to the min/max
     if (_flexLines.size() == 1) { 
-        auto _min = min[_cross].decode(*this, _parentSize[_cross]);
-        auto _max = max[_cross].decode(*this, _parentSize[_cross]);
-        if (_min.definite()) _flexLines[0].crossSize = std::max(_flexLines[0].crossSize, static_cast<float>(_min));
-        if (_max.definite()) _flexLines[0].crossSize = std::min(_flexLines[0].crossSize, static_cast<float>(_max));
+        auto _min = min.get(_cross).decode(*this, _parentSize[_cross]);
+        auto _max = max.get(_cross).decode(*this, _parentSize[_cross]);
+        if (_min.definite()) _flexLines[0].crossSize = std::max(_flexLines[0].crossSize, _min.value);
+        if (_max.definite()) _flexLines[0].crossSize = std::min(_flexLines[0].crossSize, _max.value);
     }
 
     // Handle align-content: stretch, divide leftover space to lines equaly
@@ -463,10 +550,10 @@ void Box::format(Object& self) {
             if (!_selfAlign.definite()) _selfAlign = Align::Stretch; // fallback
             // If stretch, set used-cross-size to line's cross-size minus margin
             if (_selfAlign == Align::Stretch && 
-                _item->box.size[_cross].is(Value::Auto)) { 
+                _item->box.size.get(_cross).is(Value::Auto)) {
                 _item->box.usedSize[_cross] = _line.crossSize
-                    - _item->box.margin[_cross]
-                    - _item->box.margin[_cross + 2];
+                    - _item->box.margin.get(_cross)
+                    - _item->box.margin.get(_cross + 2);
                 _item->box.format(*_item); // Format again with new size
             } else { // No stretch, just use hypothetical-cross-size
                 _item->box.usedSize[_cross] = _item->box.hypoSize[_cross];
@@ -475,12 +562,12 @@ void Box::format(Object& self) {
     }
 
     // Determine container's used cross size
-    auto _calcCrossSize = size[_cross].decode(*this, _parentSize[_cross]);
+    auto _calcCrossSize = size.get(_cross).decode(*this, _parentSize[_cross]);
     if (_calcCrossSize.definite()) usedSize[_cross] = _calcCrossSize;
     else usedSize[_cross] = _usedCrossSpace;
     // Clamp to min/max
     usedSize[_cross] = clamp(*this, _parentSize[_cross], 
-        usedSize[_cross], min[_cross], max[_cross]);
+        usedSize[_cross], min.get(_cross), max.get(_cross));
     
     // ===================================================
     // Step 6: Axis-Alignment
@@ -492,10 +579,10 @@ void Box::format(Object& self) {
 
     // Determine content box using padding and usedSize/position
     Vec4<float> _padding{
-        padding[0].decode(*this, _parentSize[0]),
-        padding[1].decode(*this, _parentSize[1]),
-        padding[2].decode(*this, _parentSize[0]),
-        padding[3].decode(*this, _parentSize[1]),
+        padding.get(0).decode(*this, _parentSize[0]),
+        padding.get(1).decode(*this, _parentSize[1]),
+        padding.get(2).decode(*this, _parentSize[0]),
+        padding.get(3).decode(*this, _parentSize[1]),
     };
     
     // Determine the content box, so we know where to position items
@@ -508,12 +595,12 @@ void Box::format(Object& self) {
     // Determine the flex-direction
     Direction _direction = Direction::Row;
     if (flex.direction.is(Value::Enum))
-        _direction = static_cast<Direction>(static_cast<float>(flex.direction));
+        _direction = flex.direction.as<Direction>();
 
     // handle align-content
     Align _content = Align::Start;
     if (align.content.is(Value::Enum))
-        _content = static_cast<Align>(static_cast<float>(align.content));
+        _content = align.content.as<Align>();
     float _crossStart = _contentBox[_cross], _crossDistance = 0.f, _crossDir = 1.f;
     switch (_content) {
     case Align::Start:
@@ -561,7 +648,7 @@ void Box::format(Object& self) {
         // handle justify-content
         Justify _justify = Justify::Start;
         if (justify.is(Value::Enum))
-            _justify = static_cast<Justify>(static_cast<float>(justify));
+            _justify = justify.as<Justify>();
         float _mainStart = 0, _mainDistance = 0, _mainDir = 1;
         switch (_justify) {
         case Justify::Start: 
@@ -593,41 +680,42 @@ void Box::format(Object& self) {
         if (_direction == Direction::RowReverse || _direction == Direction::ColumnReverse)
             _mainDir *= -1, _mainStart = _contentBox.center()[_main] + (_contentBox.center()[_main] - _mainStart);
 
-        for (auto& _item : _line.items) {
+        for (auto& _i : _line.items) {
+            auto& _item = _i->box;
             // Calculate the margin
             Vec4<float> _margin{
-                _item->box.margin[0].decode(_item->box, innerAvailableSize[0]),
-                _item->box.margin[1].decode(_item->box, innerAvailableSize[1]),
-                _item->box.margin[2].decode(_item->box, innerAvailableSize[0]),
-                _item->box.margin[3].decode(_item->box, innerAvailableSize[1]),
+                _item.margin.get(0).decode(_item, innerAvailableSize[0]),
+                _item.margin.get(1).decode(_item, innerAvailableSize[1]),
+                _item.margin.get(2).decode(_item, innerAvailableSize[0]),
+                _item.margin.get(3).decode(_item, innerAvailableSize[1]),
             };
 
             // Handle align-self, or align-items if align-self: auto
             Align _selfAlign = Align::Stretch;
-            if (_item->box.align.self.is(Value::Enum))
-                _selfAlign = static_cast<Align>(static_cast<float>(_item->box.align.self)); // Find self align
-            else if (_item->box.align.self.is(Value::Auto)) // if auto, use container's item align
-                _selfAlign = static_cast<Align>(static_cast<float>(align.items));
+            if (_item.align.self.is(Value::Enum))
+                _selfAlign = _item.align.self.as<Align>(); // Find self align
+            else if (_item.align.self.is(Value::Auto)) // if auto, use container's item align
+                _selfAlign = align.items.as<Align>();
             float _crossOffset = 0;
             switch (_selfAlign) {
             case Align::End:
-                _crossOffset = _line.crossSize - _item->box.usedSize[_cross];
+                _crossOffset = _line.crossSize - _item.usedSize[_cross];
                 break;
             case Align::Center:
-                _crossOffset = _line.crossSize / 2. - _item->box.usedSize[_cross] / 2. - _margin[_cross];
+                _crossOffset = _line.crossSize / 2. - _item.usedSize[_cross] / 2. - _margin[_cross];
                 break;
             }
 
             // Moving backwards, so remove size and margin before assigning
-            if (_mainDir == -1) _mainStart -= (_item->box.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
+            if (_mainDir == -1) _mainStart -= (_item.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
 
-            (*_item)[_cross] = _crossStart + _margin[_cross] + _crossOffset;
-            (*_item)[_main] = _mainStart + _margin[_main];
-            (*_item)[_cross + 2] = _item->box.usedSize[_cross];
-            (*_item)[_main + 2] = _item->box.usedSize[_main];
+            (*_i)[_cross] = _crossStart + _margin[_cross] + _crossOffset;
+            (*_i)[_main] = _mainStart + _margin[_main];
+            (*_i)[_cross + 2] = _item.usedSize[_cross];
+            (*_i)[_main + 2] = _item.usedSize[_main];
 
             // Moving forwards, so remove size and margin after assigning
-            if (_mainDir == 1) _mainStart += (_item->box.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
+            if (_mainDir == 1) _mainStart += (_item.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
             
             // Add the distance between the items, so after assigning
             _mainStart += _mainDir * _mainDistance;
@@ -640,4 +728,3 @@ void Box::format(Object& self) {
         _crossStart += _crossDir * _crossDistance;
     }
 }
-

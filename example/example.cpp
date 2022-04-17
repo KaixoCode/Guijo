@@ -4,88 +4,52 @@ using namespace Guijo;
 
 /*
 TODO:
- - class attribute system perhaps
- - link values to state
  - custom logger
 */
 
 
-
-
-class MyObject : public Object {
+class MyObject : public Object, public StateListener {
 public:
     Color color;
 
     StateLinked<Animated<float>> border{ 
-        { 0.f, 500., Curves::easeOutElastic, } 
+        { 0.f, 500., Curves::easeOut<2>, }
     };
+
+    void update(StateId id, State value) {
+        std::cout << id << ": " << value << '\n';
+    }
 
     MyObject(Color color) : color(color) {
 
-        state(border); // register StateLinked value
+        link(*this);
+        link(border); // register StateLinked value
 
-        border[Hovering] = { 10.f };
-        border[Focused] = { 20.f };
+        border[Hovering] = 20.f;
+        border[Focused] = 10.f;
     }
 
     void draw(DrawContext& context) const override {
         context.fill(color);
-        context.stroke({ 255, 255, 255, 255 });
-        context.strokeWeight(border.get());
+        context.stroke(color.brighter(1.5));
+        context.strokeWeight(border);
         context.rect(dimensions());
         Object::draw(context);
     }
-
-    bool hovering = false;
-    void update() {
-
-
-
-
-        //if (get(Hovering)) {
-        //    if (!hovering) {
-        //        hovering = true;
-        //        box.margin = { 10.f, 10.f, 10.f, 10.f };
-        //        box.size = { 50.f, 50.f };
-        //    }
-        //} else {
-        //    if (hovering) {
-        //        hovering = false;
-        //        box.margin = { 0.f, 0.f, 0.f, 0.f };
-        //        box.size = { 70.f, 70.f };
-        //    }
-        //}
-    }
 };
 
-constexpr Flex::Box class1{
-    .size{ 200.f, Flex::Value::Auto },
-    .margin{ 5.f, 5.f, 5.f, 5.f },
-    .padding{ 5.f, 5.f, 5.f, 5.f },
-    .flex {
-        .grow = 1,
-        .shrink = 1,
-        .wrap = Flex::DoWrap,
-    },
-    .justify = Flex::Justify::Start,
-    .align {
-        .content = Flex::Align::Stretch,
-        .items = Flex::Align::Stretch,
-        .self = Flex::Align::Stretch,
-    },
-};
+auto class1 = []() {
+    Flex::Class _class;
+    _class.margin = 5.f;
+    _class.margin.transition(200.f);
+    _class.margin.curve(Curves::easeOut<2>);
+    _class.margin[Hovering] = 15.f;
 
-constexpr Flex::Box class2{
-    .size{ 50.f, Flex::Value::Auto },
-    .margin{ 5.f, 5.f, 5.f, 5.f },
-    .flex {
-        .grow = 0,
-        .shrink = 0,
-    },
-    .align {
-        .self = Flex::Align::Stretch
-    },
-};
+    _class.size.transition(200.);
+    _class.size.curve(Curves::easeOut<2>);
+    _class.size.width[Hovering] = 180.f;
+    return _class;
+}();
 
 int main() {
     constexpr auto aione = sizeof(Object);
@@ -126,20 +90,24 @@ int main() {
         window.emplace<MyObject>(Color{ 60.f }),
     };
 
-    for (auto& o : obj)
-        o->box = class1;
-
-    Pointer<Object> obj2[]{
-        obj[0]->emplace<MyObject>(Color{ 240.f }),
-        obj[0]->emplace<MyObject>(Color{ 210.f }),
-        obj[0]->emplace<MyObject>(Color{ 180.f }),
-        obj[1]->emplace<MyObject>(Color{ 150.f }),
-        obj[1]->emplace<MyObject>(Color{ 120.f }),
-        obj[1]->emplace<MyObject>(Color{  90.f }),
-    };
-
-    for (auto& o : obj2)
-        o->box = class2;
+    for (auto& o : obj) {
+        auto& _item = o->box;
+        _item.size = { 200.f, Flex::Value::Auto },
+        _item.margin = Vec4<float>{ 5.f, 5.f, 5.f, 5.f };
+        _item.padding = Vec4<float>{ 5.f, 5.f, 5.f, 5.f };
+        _item.flex = {
+            .grow = 1,
+            .shrink = 1,
+            .wrap = Flex::DoWrap,
+        };
+        _item.justify = Flex::Justify::Start;
+        _item.align = {
+            .content = Flex::Align::Stretch,
+            .items = Flex::Align::Stretch,
+            .self = Flex::Align::Stretch,
+        };
+        _item = class1;
+    }
 
     while (gui.loop());
 

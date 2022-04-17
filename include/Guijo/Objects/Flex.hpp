@@ -2,6 +2,7 @@
 #include "Guijo/pch.hpp"
 #include "Guijo/Utils/Vec.hpp"
 #include "Guijo/Utils/Animated.hpp"
+#include "Guijo/Event/StateLinked.hpp"
 
 namespace Guijo {
     class Object;
@@ -55,68 +56,197 @@ namespace Guijo {
         struct vh { float value; }; // View height
         struct vw { float value; }; // View width
         struct Box;
-        struct Value { 
-            enum class Type{ 
-                Infinite = -3, None = -2, Auto = -1, Enum,
-                Pixels, Percent, ViewWidth, ViewHeight
+        class Value : public StateLinked<Animated<float>> {
+            using Parent = StateLinked<Animated<float>>;
+        public:
+            enum class Type : std::int8_t { 
+                Unset = -4, Infinite = -3, None = -2, Auto = -1, 
+                Enum, Pixels, Percent, ViewWidth, ViewHeight, 
             };
             using enum Type;
 
-            constexpr Value() : value(0.f), type(None) {}
-            constexpr Value(px v) : value(v.value), type(Pixels) {}
-            constexpr Value(pc v) : value(v.value), type(Percent) {}
-            constexpr Value(vh v) : value(v.value), type(ViewHeight) {}
-            constexpr Value(vw v) : value(v.value), type(ViewWidth) {}
-            constexpr Value(Type t) : value(0.f), type(t) {}
-            constexpr Value(float v) : value(v), type(Pixels) {}
-            template<class Ty> requires std::is_enum_v<Ty>
-            constexpr Value(Ty val) : value(static_cast<float>(val)), type(Enum) {}
-            constexpr Value(const Value& v) : value(v.value), type(v.type) {}
-            constexpr Value(Value&& v) noexcept : value(v.value), type(v.type) {}
+            constexpr Value() : Parent{ 0.f }, type(None) {}
+            constexpr Value(px v) : Parent{ v.value }, type(Pixels) {}
+            constexpr Value(pc v) : Parent{ v.value }, type(Percent) {}
+            constexpr Value(vh v) : Parent{ v.value }, type(ViewHeight) {}
+            constexpr Value(vw v) : Parent{ v.value }, type(ViewWidth) {}
+            constexpr Value(Type t) : Parent{ 0.f }, type(t) {}
+            constexpr Value(float v) : Parent{ v }, type(Pixels) {}
+            constexpr Value(const Value& v) = default;
+            constexpr Value(Value&& v) = default;
 
-            Value& operator=(const Value& v) { assign(v.value, v.type); return *this; }
-            Value& operator=(Value&& v) noexcept { assign(v.value, v.type); return *this; }
-            Value& operator=(px v) { assign(v.value, Pixels); return *this; }
-            Value& operator=(pc v) { assign(v.value, Percent); return *this; }
-            Value& operator=(vh v) { assign(v.value, ViewHeight); return *this; }
-            Value& operator=(vw v) { assign(v.value, ViewWidth); return *this; }
-            Value& operator=(Type v) { assign(0, v); return *this; }
-            Value& operator=(float v) { assign(v, Pixels); return *this; }
             template<class Ty> requires std::is_enum_v<Ty>
-            Value& operator=(Ty val) { assign(static_cast<float>(val), Enum); return *this; }
+            constexpr Value(Ty val) : enumValue(static_cast<float>(val)), type(Enum) {}
+
+            Value& operator=(const Value& v) = default;
+            Value& operator=(Value&& v) noexcept = default;
+            Value& operator=(px v) { return assign(v.value, Pixels); }
+            Value& operator=(pc v) { return assign(v.value, Percent); }
+            Value& operator=(vh v) { return assign(v.value, ViewHeight); }
+            Value& operator=(vw v) { return assign(v.value, ViewWidth); }
+            Value& operator=(Type v) { return assign(0, v); }
+            Value& operator=(float v) { return assign(v, Pixels); }
+            
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr Value& operator=(Ty val) {
+                enumValue = static_cast<float>(val);
+                type = Enum;
+                return *this;
+            }
+
+            constexpr Type getType() { return type; }
 
             constexpr bool is(Type t) const { return type == t; }
-            constexpr bool definite() const { return type != Auto && type != None && type != Infinite; }
-
-            template<class Ty> requires std::is_enum_v<Ty>
-            constexpr bool operator==(Ty val) { return static_cast<float>(val) == value && type == Enum; }
-
-            operator float() const { return value; }
-            float get() const { return value; }
-
-            Value decode(Box&, Value);
+            constexpr bool definite() const { return static_cast<std::int8_t>(type) >= 0; }
 
         private:
             Type type;
-            Animated<float> value;
-            void assign(float, Type);
+            float enumValue{};
+            Value& assign(float, Type);
+            void classAssign(const Value& v);
+
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr bool operator==(Ty val) {
+                return static_cast<float>(val) == enumValue && type == Enum;
+            }
+
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr Ty as() const { return static_cast<Ty>(enumValue); }
+
+            friend class Object;
+            friend class Box;
+        };
+
+        class CalcValue{
+        public:
+            using enum Value::Type;
+
+            constexpr CalcValue() : value(0.f), type(None) {}
+            constexpr CalcValue(Value::Type t, float v) : value(v), type(t) {}
+            constexpr CalcValue(Value::Type t) : value(0.f), type(t) {}
+            constexpr CalcValue(float v) : value(v), type(Pixels) {}
+        
+            constexpr void operator=(float v) { value = v, type = Pixels; }
+            constexpr operator float() const { return value; }
+
+            constexpr bool is(Value::Type t) const { return type == t; }
+            constexpr bool definite() const { return static_cast<std::int8_t>(type) >= 0; }
+
+            Value::Type type;
+            float value;
+
+            CalcValue decode(Box&, CalcValue);
+        };
+
+        struct Margin {
+            Value left;
+            Value top;
+            Value right;
+            Value bottom;
+
+            Margin& operator=(const Vec4<float>& v);
+            Margin& operator=(float v) { return operator=({ v, v, v, v }); };
+
+            struct Assigner {
+                Margin& margin;
+                StateLink state;
+                constexpr void operator=(float v) {
+                    margin.left[state] = v;
+                    margin.right[state] = v;
+                    margin.top[state] = v;
+                    margin.bottom[state] = v;
+                }
+            };
+
+            Assigner operator[](StateId id) { return Assigner{ *this, { id } }; }
+            Assigner operator[](StateLink link) { return Assigner{ *this, link }; }
+
+            void curve(Curve curve) { left.curve(curve), top.curve(curve), right.curve(curve), bottom.curve(curve); };
+            void transition(double millis) { left.transition(millis), top.transition(millis), right.transition(millis), bottom.transition(millis); }
+            void jump(float val) { left.jump(val), top.jump(val), right.jump(val), bottom.jump(val); }
+
+        private:
+            CalcValue get(std::size_t i);
+            friend class Box;
+        };
+        using Padding = Margin;
+
+        struct Size {
+            Value width;
+            Value height;
+
+            Size& operator=(const Vec2<float>& v);
+            Size& operator=(float v) { return operator=({ v, v }); };
+
+            struct Assigner {
+                Size& margin;
+                StateLink state;
+                constexpr void operator=(float v) {
+                    margin.width[state] = v;
+                    margin.height[state] = v;
+                }
+            };
+
+            Assigner operator[](StateId id) { return Assigner{ *this, { id } }; }
+            Assigner operator[](StateLink link) { return Assigner{ *this, link }; }
+
+            void curve(Curve curve) { width.curve(curve), height.curve(curve); };
+            void transition(double millis) { width.transition(millis), height.transition(millis); }
+            void jump(float val) { width.jump(val), height.jump(val); }
+
+        private:
+            CalcValue get(std::size_t i);
+            friend class Box;
+        };
+
+        struct Point {
+            Value x;
+            Value y;
+
+            Point& operator=(const Vec2<float>& v);
+            Value& operator[](std::size_t i);
+        };
+
+        struct Class {
+            Point overflow{ Value::Unset, Value::Unset }; // Overflow
+            Size size{ Value::Unset, Value::Unset };      // Prefered size
+            Size max{ Value::Unset, Value::Unset };       // Maximum size
+            Size min{ Value::Unset, Value::Unset };       // Minimum size
+            Margin margin{ Value::Unset, Value::Unset, Value::Unset, Value::Unset };   // Margin
+            Padding padding{ Value::Unset, Value::Unset, Value::Unset, Value::Unset }; // Padding
+            Value position = Value::Unset;  // Item positioning
+
+            struct {
+                Value direction = Value::Unset;  // Flex direction
+                Value basis = Value::Unset;      // prefered size
+                Value grow = Value::Unset;       // Proportion this item can grow relative to other items
+                Value shrink = Value::Unset;     // Proportion this item can shrink relative to other items
+                Value wrap = Value::Unset;       // Wrapping mode
+            } flex{};
+
+            Value justify = Value::Unset; // Justify content (inline)
+            struct {
+                Value content = Value::Unset; // Align content (block)
+                Value items = Value::Unset;   // Align items (Individual Items)
+                Value self = Value::Unset;    // Align self
+            } align{};
         };
 
         struct Box {
-            Point<Value> overflow{ Value::Auto, Value::Auto }; // Overflow
-            Size<Value> size{ Value::Auto, Value::Auto };      // Prefered size
-            Size<Value> max{ Value::None, Value::None };       // Maximum size
-            Size<Value> min{ Value::None, Value::None };       // Minimum size
-            Vec4<Value> margin{ 0, 0, 0, 0 };  // Margin
-            Vec4<Value> padding{ 0, 0, 0, 0 }; // Padding
-            Position position = Static;        // Item positioning
+            Point overflow{ Value::Auto, Value::Auto }; // Overflow
+            Size size{ Value::Auto, Value::Auto };      // Prefered size
+            Size max{ Value::None, Value::None };       // Maximum size
+            Size min{ Value::None, Value::None };       // Minimum size
+            Margin margin{ 0, 0, 0, 0 };   // Margin
+            Padding padding{ 0, 0, 0, 0 }; // Padding
+            Value position = Static;       // Item positioning
 
             struct {
                 Value direction = Row;     // Flex direction
                 Value basis = Value::Auto; // prefered size
                 Value grow = 0;            // Proportion this item can grow relative to other items
                 Value shrink = 1;          // Proportion this item can shrink relative to other items
-                Wrap wrap = NoWrap;        // Wrapping mode
+                Value wrap = NoWrap;       // Wrapping mode
             } flex{};
 
             Value justify = Start; // Justify content (inline)
@@ -130,17 +260,18 @@ namespace Guijo {
             
             void format(Object&); // Apply FlexBox formatting to Object
 
-            // !!Accessing any of these values below is undefined behaviour!!
-            
-            static inline Size<float> windowSize; // Window size, used with 'vh' and 'vw' units
-            Size<Value> innerAvailableSize{}; // Available size for items (either infinite or definite)
-            Size<Value> availableSize{};      // Available size for itself
-            Value flexBaseSize{};             // actual value of flex-base
-            Value outerFlexBaseSize{};        // actual value of flex-base + margin
-            Size<Value> hypoSize{};           // flex-base clamped to min/max
-            Size<Value> outerHypoSize{};      // flex-base clamped to min/max + margin
-            Size<Value> targetSize{};         // target size in flex-line
-            Size<Value> usedSize{};           // definitive size based on flex-line
+            void operator=(const Class&);
+
+        private:
+            static inline Vec2<float> windowSize; // Window size, used with 'vh' and 'vw' units
+            Vec2<CalcValue> innerAvailableSize{}; // Available size for items (either infinite or definite)
+            Vec2<CalcValue> availableSize{};      // Available size for itself
+            CalcValue flexBaseSize{};             // actual value of flex-base
+            CalcValue outerFlexBaseSize{};        // actual value of flex-base + margin
+            Vec2<CalcValue> hypoSize{};           // flex-base clamped to min/max
+            Vec2<CalcValue> outerHypoSize{};      // flex-base clamped to min/max + margin
+            Vec2<CalcValue> targetSize{};         // target size in flex-line
+            Vec2<CalcValue> usedSize{};           // definitive size based on flex-line
             Box* parent = nullptr;            // Parent size, used with % unit
             bool violationType = false;       // Min-max violation when resolving flexible sizes
             bool freezeSize = false;          // Used when resolving flexible sizes in flex-line
@@ -148,10 +279,12 @@ namespace Guijo {
             
             void calcAvailableSize();
             std::size_t flowDirection();
-            Value addPadding(Value, std::size_t, Value);
-            Value addMargin(Value, std::size_t, Value);
-            Value subPadding(Value, std::size_t, Value);
-            Value subMargin(Value, std::size_t, Value);
+            CalcValue addPadding(CalcValue, std::size_t, CalcValue);
+            CalcValue addMargin(CalcValue, std::size_t, CalcValue);
+            CalcValue subPadding(CalcValue, std::size_t, CalcValue);
+            CalcValue subMargin(CalcValue, std::size_t, CalcValue);
+            friend class CalcValue;
+            friend class Window;
         };
     }
 }

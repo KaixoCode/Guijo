@@ -89,13 +89,20 @@ namespace Guijo {
 		constexpr Animated(const Ty& val, Curve curve) : m_Goal(val), m_Curve(curve) {}
 		constexpr Animated(const Ty& val, double millis, Curve curve) : m_Goal(val), m_Time(millis), m_Curve(curve) {}
 
-		constexpr Animated& operator=(const Animated& v) { return assign(v.m_Goal); };
-		constexpr Animated& operator=(Animated && v) { return assign(v.m_Goal); };
+		constexpr Animated& operator=(const Animated&) = default;
+		constexpr Animated& operator=(Animated &&) = default;
 		constexpr Animated& operator=(const Ty& val) { return assign(val); }
+		constexpr Animated& assign(const Ty& newval) {
+			m_Value = get();
+			m_Goal = newval;
+			m_ChangeTime = std::chrono::steady_clock::now();
+			return *this;
+		}
 
 		constexpr void curve(Curve curve) { m_Curve = curve; };
 		constexpr void transition(double millis) { m_Time = millis; }
 		constexpr void jump(const Ty& val) { m_Goal = val, m_Value = val; }
+
 		constexpr Ty& goal() { return m_Goal; }
 		constexpr const Ty& goal() const { return m_Goal; }
 
@@ -110,18 +117,11 @@ namespace Guijo {
 
 		constexpr operator Ty() const { return get(); }
 
-	private:
+	protected:
 		double m_Time = 0;
 		Ty m_Goal{};
 		Ty m_Value = m_Goal;
 		std::chrono::steady_clock::time_point m_ChangeTime{};
 		Curve m_Curve = Curves::linear;
-
-		constexpr Animated& assign(const Ty& newval) {
-			m_Value = get();
-			m_Goal = newval;
-			m_ChangeTime = std::chrono::steady_clock::now();
-			return *this;
-		}
 	};
 }

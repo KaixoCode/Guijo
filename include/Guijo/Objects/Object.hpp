@@ -44,7 +44,7 @@ namespace Guijo {
         template<auto Fun> void event();
         template<class Obj> void event();
         template<auto Fun> void state(std::size_t state);
-        template<std::derived_from<StateListener> Ty> void state(Ty&);
+        template<std::derived_from<StateListener> Ty> void link(Ty&);
 
     protected:
         std::vector<State> m_States{};
@@ -98,7 +98,7 @@ namespace Guijo {
     }
 
     template<std::derived_from<StateListener> Ty> 
-    void Object::state(Ty& val) {
+    void Object::link(Ty& val) {
         m_StateListeners.push_back(&val);
     }
 }
