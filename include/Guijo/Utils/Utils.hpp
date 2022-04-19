@@ -38,14 +38,14 @@ namespace Guijo {
     constexpr auto operator^(A a, B b)
         -> decltype(a ^ to_underlying(b)) { return a ^ to_underlying(b); }
     template<std::integral A, enum_type B>
-    constexpr auto operator|=(A a, B b)
+    constexpr auto operator|=(A& a, B b)
         -> decltype(a |= to_underlying(b)) { return a |= to_underlying(b); }
     template<std::integral A, enum_type B>
-    constexpr auto operator&=(A a, B b)
-        -> decltype(a |= to_underlying(b)) { return a |= to_underlying(b); }
+    constexpr auto operator&=(A& a, B b)
+        -> decltype(a |= to_underlying(b)) { return a &= to_underlying(b); }
     template<std::integral A, enum_type B>
-    constexpr auto operator^=(A a, B b)
-        -> decltype(a |= to_underlying(b)) { return a |= to_underlying(b); }
+    constexpr auto operator^=(A& a, B b)
+        -> decltype(a |= to_underlying(b)) { return a ^= to_underlying(b); }
     template<std::integral A, enum_type B>
     constexpr auto operator==(A a, B b)
         -> decltype(a == to_underlying(b)) { return a == to_underlying(b); }

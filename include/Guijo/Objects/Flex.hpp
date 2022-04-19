@@ -44,7 +44,6 @@ namespace Guijo {
         using enum Position;
 
         enum class Overflow {
-            Normal, // Show scrollbars when necessary
             Scroll, // Always show scrollbars
             Hidden, // Clip overflowing content, no scrollbar
             Visible // Don't clip overflowing content
@@ -94,10 +93,18 @@ namespace Guijo {
                 return *this;
             }
 
-            constexpr Type getType() { return type; }
+            constexpr Type getType() const { return type; }
 
             constexpr bool is(Type t) const { return type == t; }
             constexpr bool definite() const { return static_cast<std::int8_t>(type) >= 0; }
+
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr bool operator==(Ty val) const {
+                return static_cast<float>(val) == enumValue && type == Enum;
+            }
+
+            template<class Ty> requires std::is_enum_v<Ty>
+            constexpr Ty as() const { return static_cast<Ty>(enumValue); }
 
         private:
             Type type;
@@ -111,15 +118,7 @@ namespace Guijo {
 
             void classAssign(const Value& v);
 
-            template<class Ty> requires std::is_enum_v<Ty>
-            constexpr bool operator==(Ty val) {
-                return static_cast<float>(val) == enumValue && type == Enum;
-            }
-
-            template<class Ty> requires std::is_enum_v<Ty>
-            constexpr Ty as() const { return static_cast<Ty>(enumValue); }
-
-            friend class Object;
+            friend class EventReceiver;
             friend class Box;
         };
 
@@ -149,6 +148,10 @@ namespace Guijo {
             Value top;
             Value right;
             Value bottom;
+
+            constexpr operator Vec4<float>() const {
+                return { left, top, right, bottom };
+            }
 
             constexpr Margin& operator=(const Vec4<float>& v) {
                 left = v[0];
@@ -188,6 +191,10 @@ namespace Guijo {
             Value width;
             Value height;
 
+            constexpr operator Vec2<float>() const {
+                return { width, height };
+            }
+
             constexpr Size& operator=(const Vec2<float>& v) {
                 width = v[0];
                 height = v[1];
@@ -221,11 +228,18 @@ namespace Guijo {
             Value x;
             Value y;
 
+            constexpr operator Vec2<float>() const {
+                return { x, y };
+            }
+
             constexpr Flex::Point& operator=(const Vec2<float>& v) {
                 x = v[0];
                 y = v[1];
                 return *this;
             }
+
+            constexpr Point& operator=(float v) { return operator=(Vec2<float>{ v, v }); };
+
         private:
             CalcValue get(std::size_t i);
             friend class Box;
@@ -261,9 +275,9 @@ namespace Guijo {
             Size size{ Value::Auto, Value::Auto };      // Prefered size
             Size max{ Value::None, Value::None };       // Maximum size
             Size min{ Value::None, Value::None };       // Minimum size
-            Margin margin{ 0, 0, 0, 0 };   // Margin
-            Padding padding{ 0, 0, 0, 0 }; // Padding
-            Value position = Static;       // Item positioning
+            Margin margin{ 0, 0, 0, 0 };                // Margin
+            Padding padding{ 0, 0, 0, 0 };              // Padding
+            Value position = Static;                    // Item positioning
 
             struct {
                 Value direction = Row;     // Flex direction
@@ -282,12 +296,12 @@ namespace Guijo {
 
             bool use = true; // Use FlexBox sizing for children
             
-            void format(Object&); // Apply FlexBox formatting to Object
+            void format(Object&, bool sizing = false); // Apply FlexBox formatting to Object
 
             void operator=(const Class&);
 
-        private:
             static inline Vec2<float> windowSize; // Window size, used with 'vh' and 'vw' units
+        private:
             Vec2<CalcValue> innerAvailableSize{}; // Available size for items (either infinite or definite)
             Vec2<CalcValue> availableSize{};      // Available size for itself
             CalcValue flexBaseSize{};             // actual value of flex-base

@@ -16,7 +16,7 @@ namespace Guijo {
     struct MouseMove : Event {
         MouseMove(Point<float> pos) : pos(pos) {}
         Point<float> pos{}; // New mouse position
-        bool forward(const Object& c) const override { return c.get(Hovering); };
+        bool forward(const EventReceiver& c) const override { return c.get(Hovering); };
     };
 
     struct MouseDrag : Event {
@@ -26,23 +26,23 @@ namespace Guijo {
         Point<float> pos;     // Position of cursor
         MouseButtons buttons; // Buttons held down
         KeyMod mod;           // Key mods
-        bool forward(const Object& c) const override { return c.get(Pressed); };
+        bool forward(const EventReceiver& c) const override { return c.get(Pressed); };
     };
 
     struct MouseEnter : Event {
-        bool forward(const Object& c) const override { return false; }
+        bool forward(const EventReceiver& c) const override { return false; }
     };
 
     struct MouseExit : Event {
-        bool forward(const Object& c) const override { return c.get(Hovering); }
+        bool forward(const EventReceiver& c) const override { return c.get(Hovering); }
     };
 
     struct Focus : Event {
-        bool forward(const Object& c) const override { return false; }
+        bool forward(const EventReceiver& c) const override { return false; }
     };
 
     struct Unfocus : Event {
-        bool forward(const Object& c) const override { return true; }
+        bool forward(const EventReceiver& c) const override { return true; }
     };
 
     struct MousePress : Event {
@@ -51,7 +51,7 @@ namespace Guijo {
         Point<float> pos;    // Position of press
         MouseButton button; // Button pressed
         KeyMod mod;         // Key mods
-        bool forward(const Object& c) const override { return c.get(Hovering); };
+        bool forward(const EventReceiver& c) const override { return c.get(Hovering); };
     };
 
     struct MouseClick : Event {
@@ -60,7 +60,7 @@ namespace Guijo {
         Point<float> pos;    // Position of click
         MouseButton button; // Button used to click
         KeyMod mod;         // Key mods
-        bool forward(const Object& c) const override { return c.get(Hovering); };
+        bool forward(const EventReceiver& c) const override { return c.get(Hovering); };
     };
 
     struct MouseWheel : public Event {
@@ -69,7 +69,7 @@ namespace Guijo {
         Point<float> pos;     // Cursor position when mousewheel was used
         std::int16_t amount; // Amount the mousewheel was used
         KeyMod mod;          // Key mods
-        bool forward(const Object& c) const override { return c.get(Hovering); };
+        bool forward(const EventReceiver& c) const override { return c.get(Hovering); };
     };
 
     struct MouseRelease : Event {
@@ -78,7 +78,7 @@ namespace Guijo {
         Point<float> pos;    // Position of the cursor
         MouseButton button; // Button that was released
         KeyMod mod;         // Key mods
-        bool forward(const Object& c) const override { return c.get(Focused); };
+        bool forward(const EventReceiver& c) const override { return c.get(Focused); };
     };
 
     struct KeyPress : public Event {
@@ -87,7 +87,7 @@ namespace Guijo {
         KeyCode keycode; // Key code
         KeyMod mod;      // Key mods
         bool repeat;     // Is repeat key (fired when key held down)
-        bool forward(const Object& c) const override { return true; };
+        bool forward(const EventReceiver& c) const override { return true; };
     };
 
     struct KeyType : public Event {
@@ -96,7 +96,7 @@ namespace Guijo {
         char key;   // Character typed
         KeyMod mod; // Key mods
         bool coded; // Is it a coded character
-        bool forward(const Object& c) const override { return true; };
+        bool forward(const EventReceiver& c) const override { return true; };
     };
 
     struct KeyRelease : public Event {
@@ -104,7 +104,7 @@ namespace Guijo {
             : keycode(code), mod(mod) {}
         KeyCode keycode; // Key code of released key
         KeyMod mod;      // Key mods
-        bool forward(const Object& c) const override { return true; };
+        bool forward(const EventReceiver& c) const override { return true; };
     };
 
     constexpr bool operator==(const KeyPress& a, KeyCode b) { return (a.keycode | a.mod) == b; }

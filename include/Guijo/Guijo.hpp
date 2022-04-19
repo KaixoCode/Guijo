@@ -8,10 +8,11 @@ namespace Guijo {
     class Gui {
     public:
         template<std::derived_from<Window> Ty>
-        Ty& emplace(const typename Ty::Construct& arg) {
+        Pointer<Ty> emplace(const typename Ty::Construct& arg) {
             Ty* _value = new Ty{ arg };
             m_Windows.emplace_back(_value);
-            return *_value;
+            _value->remember();
+            return _value;
         }
 
         bool loop() {

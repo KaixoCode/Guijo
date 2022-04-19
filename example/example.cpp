@@ -32,21 +32,21 @@ struct WindowStyle : Flex::Class {
         justify = Flex::Justify::Center;
         align.content = Flex::Align::Stretch;
         align.items = Flex::Align::Stretch;
-        padding = { 5.f, 5.f, 5.f, 5.f };
+        padding = { 15.f, 15.f, 15.f, 15.f };
     }
 };
 
 struct Class1 : Flex::Class {
     Class1() {
-        size.width = Flex::pc{ 50 };
-        margin = 5.f;
+        size.width = Flex::pc{ 50.f };
+        margin = 10.f;
         flex.wrap = Flex::Wrap::DoWrap;
         flex.direction = Flex::Direction::Row;
         flex.grow = 0;
         flex.shrink = 1;
-        justify = Flex::Justify::Around;
+        justify = Flex::Justify::Evenly;
         align.content = Flex::Align::Stretch;
-        align.items = Flex::Align::Center;
+        align.items = Flex::Align::Stretch;
     }
 };
 
@@ -65,21 +65,21 @@ struct Class11 : Flex::Class {
 int main() {
     Gui gui;
 
-    Window& window = gui.emplace<Window>({
+    auto window = gui.emplace<Window>({
         .name = "HelloWorld1",
         .dimensions{ -1, -1, 800, 800 },
     });
 
-    window.box = WindowStyle{};
+    window->box = WindowStyle{};
 
-    {   // 
-        auto& obj = window.emplace<MyObject>(Color{ 20.f });
-        obj.box = Class1{};
-        for (int i = 0; i < 10; i++) {
-            auto& o = obj.emplace<MyObject>(Color{ 40.f });
-            o.box = Class11{};
+    //for (int i = 0; i < 10; i++) {
+        auto obj = window->emplace<MyObject>(Color{ 20.f });
+        obj->box = Class1{};
+        for (int i = 0; i < 500; i++) {
+            auto o = obj->emplace<MyObject>(Color{ 40.f });
+            o->box = Class11{};
         }
-    }
+    //}
     while (gui.loop());
 
     return 0;

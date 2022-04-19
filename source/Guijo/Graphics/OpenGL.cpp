@@ -114,6 +114,7 @@ Graphics::~Graphics() {
 }
 
 void Graphics::runCommand(Command<Clip>& v) {
+    v.clip.y(windowSize.height() - v.clip.y() - v.clip.height()); // Flip y
     glEnable(GL_SCISSOR_TEST);
     Dimensions<float> _clip = {
         std::ceil((v.clip.x() + matrix[3][0]) / scaling),
@@ -135,9 +136,9 @@ void Graphics::runCommand(Command<PopClip>&) {
         glDisable(GL_SCISSOR_TEST);
     } else {
         glEnable(GL_SCISSOR_TEST);
-        Dimensions clip = clipStack.top();
+        Dimensions _clip = clipStack.top();
         clipStack.pop();
-        clip = clip;
+        clip = _clip;
         glScissor(clip.x(), clip.y(), clip.width(), clip.height());
     }
 }
@@ -147,6 +148,7 @@ void Graphics::runCommand(Command<ClearClip>&) {
 }
 
 void Graphics::runCommand(Command<Viewport>& v) {
+    v.viewport.y(windowSize.height() - v.viewport.y() - v.viewport.height()); // Flip y
     glViewport(
         std::floor(v.viewport.x() / scaling),
         std::floor(v.viewport.y() / scaling),

@@ -5,13 +5,13 @@ Window::Window(const Construct& c) {
     createWindow(c);
 };
 
-float Window::x() const { return Object::x(); }
-float Window::y() const { return Object::y(); }
-float Window::width() const { return Object::width(); }
-float Window::height() const { return Object::height(); }
-Point<float> Window::pos() const { return Object::pos(); }
-Size<float> Window::size() const { return Object::size(); }
-Dimensions<float> Window::dimensions() const { return Object::dimensions(); }
+float Window::x() const { return EventReceiver::x(); }
+float Window::y() const { return EventReceiver::y(); }
+float Window::width() const { return EventReceiver::width(); }
+float Window::height() const { return EventReceiver::height(); }
+Point<float> Window::pos() const { return EventReceiver::pos(); }
+Size<float> Window::size() const { return EventReceiver::size(); }
+Dimensions<float> Window::dimensions() const { return EventReceiver::dimensions(); }
 
 void Window::x(const float& v) { 
     RECT rect{ v, top(), right(), bottom() };
@@ -124,7 +124,9 @@ void Window::windowsLoop() {
     update(); // Update cycle
     
     m_Graphics.prepare(); // Graphics cycle
+    pre(m_Graphics.context);
     draw(m_Graphics.context);
+    post(m_Graphics.context);
     m_Graphics.render();
     m_Graphics.swapBuffers();
 
@@ -170,7 +172,7 @@ void Window::keyEvent(KeyCode key, bool repeat, int action, KeyMod mod) {
 }
 
 void Window::resizeEvent(Dimensions dims) {
-    Object::dimensions(dims);
+    EventReceiver::dimensions(dims);
     m_Graphics.dimensions(dims);
     windowsLoop();
 }

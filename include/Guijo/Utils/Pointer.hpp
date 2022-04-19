@@ -11,6 +11,7 @@ namespace Guijo {
 
     template<class Ty>
     struct Pointer {
+        constexpr Pointer() : value(nullptr) {}
         constexpr Pointer(Ty* val) : value(val) {}
         constexpr Pointer(Ty& val) : value(&val) {}
         constexpr Pointer(Pointer&& val) noexcept : value(val.value) { val.value = nullptr; }
@@ -50,6 +51,8 @@ namespace Guijo {
 
         constexpr explicit operator Ty* () { return value; }
         constexpr explicit operator const Ty* () const { return value; }
+
+        constexpr explicit operator bool() const { return value != nullptr; }
 
         constexpr Ty* get() { return value; }
         constexpr const Ty* get() const { return value; }

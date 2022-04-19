@@ -11,10 +11,10 @@ namespace Guijo {
         virtual void update(StateId id, State value) = 0;
     };
 
-    class Object;
+    class EventReceiver;
 
     struct Event {
-        virtual bool forward(const Object&) const = 0;
+        virtual bool forward(const EventReceiver&) const = 0;
 
         constexpr void handle() const { m_Handled = true; }
         constexpr bool handled() const { return m_Handled; }
@@ -24,11 +24,11 @@ namespace Guijo {
     };
 
     struct EventHandler : public Refcounted {
-        virtual void handle(Object&, const Event&) const = 0;
+        virtual void handle(EventReceiver&, const Event&) const = 0;
     };
 
     template<auto Fun> struct TypedEventHandler : public EventHandler {
-        void handle(Object& self, const Event& e) const override {
+        void handle(EventReceiver& self, const Event& e) const override {
             using signature = detail::signature_t<decltype(Fun)>;
             using args = detail::function_args_t<signature>;
             // Invocable immediately (static function/lambda)
@@ -54,14 +54,14 @@ namespace Guijo {
     };
 
     struct StateHandler : public Refcounted {
-        virtual State handle(Object&, const Event&, Object&, State) const = 0;
+        virtual State handle(EventReceiver&, const Event&, EventReceiver&, State) const = 0;
     };
 
     template<auto Fun> struct TypedStateHandler : public StateHandler {
         const std::size_t state{};
         TypedStateHandler(std::size_t state) : state(state) {}
-        State handle(Object& self,
-            const Event& e, Object& c, State matches) const override {
+        State handle(EventReceiver& self,
+            const Event& e, EventReceiver& c, State matches) const override {
             using signature = detail::signature_t<decltype(Fun)>;
             using args = detail::function_args_t<signature>;
             // Invocable immediately (static function/lambda)

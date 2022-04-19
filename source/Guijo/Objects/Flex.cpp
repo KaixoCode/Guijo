@@ -1,5 +1,6 @@
 #include "Guijo/Objects/Flex.hpp"
 #include "Guijo/Objects/Object.hpp"
+#include "Guijo/Objects/Scrollbar.hpp"
 
 using namespace Guijo;
 using namespace Flex;
@@ -172,7 +173,7 @@ CalcValue clamp(Box& self, const CalcValue& pval, CalcValue v, CalcValue min, Ca
     return v;
 }
 
-void Box::format(Object& self) {
+void Box::format(Object& self, bool sizing) {
     auto& _items = self.objects();
 
     // ===================================================
@@ -180,6 +181,11 @@ void Box::format(Object& self) {
     // ===================================================
 
     calcAvailableSize();
+
+    if (self.scrollbar.x->visible && innerAvailableSize[1].definite()) 
+        innerAvailableSize[1].value -= self.scrollbar.x->size;
+    if (self.scrollbar.y->visible && innerAvailableSize[0].definite()) 
+        innerAvailableSize[0].value -= self.scrollbar.y->size;
 
     // Parent doesn't exist or doesn't give us a size, use own size
     if (parent == nullptr || !parent->use) {
@@ -464,7 +470,7 @@ void Box::format(Object& self) {
         // Set usedSize in main axis to target size, in recurse, this
         // usedSize will be used for available space
         _item.usedSize[_main] = _item.targetSize[_main];
-        _item.format(*_i); 
+        _item.format(*_i, true); 
         // After format recurse, the item has chosen a usedSize, set that as
         // hypothetical cross size, as we'll adjust that if align-self: stretch
         _item.hypoSize[_cross] = _item.usedSize[_cross];
@@ -482,6 +488,9 @@ void Box::format(Object& self) {
         _crossSize = usedSize[_cross];
         _innerCrossSize = subPadding(_crossSize, _cross, _parentSize[_cross]);
     }
+
+    if (self.scrollbar.x->visible && _innerCrossSize.definite())
+        _innerCrossSize.value -= self.scrollbar.x->size;
 
     // Determine the cross sizes of all the lines
     if (_flexLines.size() == 1 && _innerCrossSize.definite()) {
@@ -547,6 +556,8 @@ void Box::format(Object& self) {
     usedSize[_cross] = clamp(*this, _parentSize[_cross], 
         usedSize[_cross], min.get(_cross), max.get(_cross));
     
+    if (sizing) return;
+
     // ===================================================
     // Step 6: Axis-Alignment
     // ===================================================
@@ -565,10 +576,12 @@ void Box::format(Object& self) {
     
     // Determine the content box, so we know where to position items
     Dimensions<float> _contentBox;
-    _contentBox[_cross] = self[_cross] + _padding[_cross];
-    _contentBox[_main] = self[_main] + _padding[_main];
-    _contentBox[_cross + 2] = usedSize[_cross] - _padding[_cross + 2] - _padding[_cross];
-    _contentBox[_main + 2] = usedSize[_main] - _padding[_main + 2] - _padding[_main];
+    _contentBox[_cross] = self[_cross];
+    _contentBox[_main] = self[_main];
+    _contentBox[_cross + 2] = usedSize[_cross];
+    _contentBox[_main + 2] = usedSize[_main];
+
+    auto _innerContentBox = _contentBox.inset(_padding);
 
     // Determine the flex-direction
     Direction _direction = Direction::Row;
@@ -579,38 +592,40 @@ void Box::format(Object& self) {
     Align _content = Align::Start;
     if (align.content.is(Value::Enum))
         _content = align.content.as<Align>();
-    float _crossStart = _contentBox[_cross], _crossDistance = 0.f, _crossDir = 1.f;
+    float _crossStart = _innerContentBox[_cross], _crossDistance = 0.f, _crossDir = 1.f;
     switch (_content) {
     case Align::Start:
-        _crossStart = _contentBox[_cross];
+        _crossStart = _innerContentBox[_cross];
         break;
     case Align::End:
-        _crossStart = _contentBox[_cross] + _contentBox[_cross + 2];
+        _crossStart = _innerContentBox[_cross] + _innerContentBox[_cross + 2];
         _crossDir = -1;
         break;
     case Align::Center:
-        _crossStart = _contentBox.center()[_cross] - _usedCrossSpace / 2.f;
+        _crossStart = _innerContentBox.center()[_cross] - _usedCrossSpace / 2.f;
         break;
     case Align::Between:
-        _crossStart = _contentBox[_cross];
+        _crossStart = _innerContentBox[_cross];
         if (_flexLines.size() == 1) _crossDistance = 0.f;
         else _crossDistance = std::max(0.f, _freeCrossSpace / (_flexLines.size() - 1.f));
         break;
     case Align::Around:
-        _crossStart = _contentBox[_cross] + (_freeCrossSpace / _flexLines.size()) / 2.f;
+        _crossStart = _innerContentBox[_cross] + (_freeCrossSpace / _flexLines.size()) / 2.f;
         _crossDistance = _freeCrossSpace / _flexLines.size();
         break;
     case Align::Evenly:
-        _crossStart = _contentBox[_cross] + _freeCrossSpace / (_flexLines.size() + 1.f);
+        _crossStart = _innerContentBox[_cross] + _freeCrossSpace / (_flexLines.size() + 1.f);
         _crossDistance = _freeCrossSpace / (_flexLines.size() + 1.f);
         break;
     }
 
     // If direction is reverse, reverse the order of the flex-lines
     if (_direction == Direction::RowReverse || _direction == Direction::ColumnReverse)
-        _crossDir *= -1, _crossStart = _contentBox.center()[_cross]
-            + (_contentBox.center()[_cross] - _crossStart);
+        _crossDir *= -1, _crossStart = _innerContentBox.center()[_cross]
+            + (_innerContentBox.center()[_cross] - _crossStart);
 
+    self.scrollbar[_main].range = { _innerContentBox[_main], 0}; // reset scroll size
+    self.scrollbar[_cross].range = { _innerContentBox[_cross], 0 }; // reset scroll size
     for (auto& _line : _flexLines) {
         // Moving backwards, so remove crossSize at the start of the loop
         if (_crossDir == -1) _crossStart -= _line.crossSize;
@@ -630,33 +645,33 @@ void Box::format(Object& self) {
         float _mainStart = 0, _mainDistance = 0, _mainDir = 1;
         switch (_justify) {
         case Justify::Start: 
-            _mainStart = _contentBox[_main];
+            _mainStart = _innerContentBox[_main];
             break;
         case Justify::End: 
-            _mainStart = _contentBox[_main] + _contentBox[_main + 2];
+            _mainStart = _innerContentBox[_main] + _innerContentBox[_main + 2];
             _mainDir = -1;
             break;
         case Justify::Center: 
-            _mainStart = _contentBox.center()[_main] - _usedSpace / 2.f; 
+            _mainStart = _innerContentBox.center()[_main] - _usedSpace / 2.f; 
             break;
         case Justify::Between:
-            _mainStart = _contentBox[_main];
+            _mainStart = _innerContentBox[_main];
             if (_line.items.size() == 1) _mainDistance = 0;
             else _mainDistance = std::max(0.f, _freeSpace / (_line.items.size() - 1));
             break;
         case Justify::Around:
-            _mainStart = _contentBox[_main] + (_freeSpace / _line.items.size()) / 2.;
+            _mainStart = _innerContentBox[_main] + (_freeSpace / _line.items.size()) / 2.;
             _mainDistance = _freeSpace / _line.items.size();
             break;
         case Justify::Evenly:
-            _mainStart = _contentBox[_main] + _freeSpace / (_line.items.size() + 1);
+            _mainStart = _innerContentBox[_main] + _freeSpace / (_line.items.size() + 1);
             _mainDistance = _freeSpace / (_line.items.size() + 1);
             break;
         }
 
         // If direction is reverse, reverse the order of the items in the flex-line
         if (_direction == Direction::RowReverse || _direction == Direction::ColumnReverse)
-            _mainDir *= -1, _mainStart = _contentBox.center()[_main] + (_contentBox.center()[_main] - _mainStart);
+            _mainDir *= -1, _mainStart = _innerContentBox.center()[_main] + (_innerContentBox.center()[_main] - _mainStart);
 
         for (auto& _i : _line.items) {
             auto& _item = _i->box;
@@ -687,10 +702,22 @@ void Box::format(Object& self) {
             // Moving backwards, so remove size and margin before assigning
             if (_mainDir == -1) _mainStart -= (_item.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
 
-            (*_i)[_cross] = _crossStart + _margin[_cross] + _crossOffset;
-            (*_i)[_main] = _mainStart + _margin[_main];
+            const float _crossPos = _crossStart + _margin[_cross] + _crossOffset;
+            const float _mainPos = _mainStart + _margin[_main];
+
+            (*_i)[_cross] = _crossPos - self.scrollbar[_cross].scrolled;
+            (*_i)[_main] = _mainPos - self.scrollbar[_main].scrolled;
             (*_i)[_cross + 2] = _item.usedSize[_cross];
             (*_i)[_main + 2] = _item.usedSize[_main];
+
+            if (_mainPos + (*_i)[_main + 2] + _margin[_main + 2] > self.scrollbar[_main].range[1])
+                self.scrollbar[_main].range[1] = _mainPos + (*_i)[_main + 2] + _margin[_main + 2];
+            if (_crossPos + (*_i)[_cross + 2] + _margin[_cross + 2] > self.scrollbar[_cross].range[1])
+                self.scrollbar[_cross].range[1] = _crossPos + (*_i)[_cross + 2] + _margin[_cross + 2];
+            if (_mainPos - _margin[_main] < self.scrollbar[_main].range[0])
+                self.scrollbar[_main].range[0] = _mainPos - _margin[_main];
+            if (_crossPos - _margin[_cross] < self.scrollbar[_cross].range[0])
+                self.scrollbar[_cross].range[0] = _crossPos - _margin[_cross];
 
             // Moving forwards, so remove size and margin after assigning
             if (_mainDir == 1) _mainStart += (_item.usedSize[_main] + _margin[_main] + _margin[_main + 2]);
@@ -705,4 +732,24 @@ void Box::format(Object& self) {
         // add the distance between the lines, so at the end of the loop
         _crossStart += _crossDir * _crossDistance;
     }
+
+    // Calculate actual scroll size
+    self.scrollbar[0].range[0] = std::min(self.scrollbar[0].range[0] - _innerContentBox[0], 0.f);
+    self.scrollbar[1].range[0] = std::min(self.scrollbar[1].range[0] - _innerContentBox[1], 0.f);
+    self.scrollbar[0].range[1] = std::max(self.scrollbar[0].range[1] - _innerContentBox[2] - _innerContentBox[0], 0.f);
+    self.scrollbar[1].range[1] = std::max(self.scrollbar[1].range[1] - _innerContentBox[3] - _innerContentBox[1], 0.f);
+    self.scrollbar[0].scrolled = std::clamp(self.scrollbar[0].scrolled, self.scrollbar[0].range[0], self.scrollbar[0].range[1]);
+    self.scrollbar[1].scrolled = std::clamp(self.scrollbar[1].scrolled, self.scrollbar[1].range[0], self.scrollbar[1].range[1]);
+
+    self.scrollbar.x->visible = (self.scrollbar.x->range[0] != 0
+        || self.scrollbar.x->range[1] != 0
+        || overflow.x == Flex::Overflow::Scroll)
+        && overflow.x != Flex::Overflow::Hidden;
+    self.scrollbar.x->dimensions(self.dimensions());
+
+    self.scrollbar.y->visible = (self.scrollbar.y->range[0] != 0
+        || self.scrollbar.y->range[1] != 0
+        || overflow.y == Flex::Overflow::Scroll)
+        && overflow.y != Flex::Overflow::Hidden;
+    self.scrollbar.y->dimensions(self.dimensions());
 }
