@@ -2,7 +2,7 @@
 #include "Guijo/pch.hpp"
 #include "Guijo/Event/Event.hpp"
 #include "Guijo/Event/Key.hpp"
-#include "Guijo/Objects/Object.hpp"
+#include "Guijo/Objects/EventReceiver.hpp"
 
 namespace Guijo {
     enum class MouseButton : std::uint8_t {

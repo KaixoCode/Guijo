@@ -4,6 +4,7 @@
 using namespace Guijo;
 
 Object::Object() {
+    event<&Object::mouseWheel>();
     // Handle Hovering state
     state<[](const MouseMove& e, EventReceiver& c, State matches) {
         bool _now = c.hitbox(e.pos) && matches == 0; // New state
@@ -102,4 +103,13 @@ void Object::handle(const Event& e) {
             if (_c->get(Visible)) _matches += _h->handle(*this, e, *_c, _matches);
     }
     EventReceiver::handle(e);
+}
+
+void Object::mouseWheel(const MouseWheel& e) {
+    if (scrollbar.y->visible && !e.handled()) {
+        e.handle();
+        scrollbar.y->scrolled = std::clamp(
+            scrollbar.y->scrolled - e.amount,
+            scrollbar.y->range[0], scrollbar.y->range[1]);
+    }
 }

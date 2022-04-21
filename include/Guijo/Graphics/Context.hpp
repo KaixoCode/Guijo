@@ -147,6 +147,10 @@ namespace Guijo {
             m_Commands.emplace(Command<TextAlign>{ align });
         }
 
+        void textAlign(Align align) { 
+            m_Commands.emplace(Command<TextAlign>{ static_cast<Alignment>(align) });
+        }
+
         void translate(const Point<float>& translate) {
             m_Commands.emplace(Command<Translate>{ translate });
         }

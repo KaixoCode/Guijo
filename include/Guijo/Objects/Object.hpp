@@ -41,6 +41,8 @@ namespace Guijo {
     private:
         std::vector<Pointer<StateHandler>> m_StateHandlers{};
         std::vector<Pointer<Object>> m_Objects{};
+
+        void mouseWheel(const MouseWheel&);
     };
 
     template<std::derived_from<Object> Ty, class ...Args>

@@ -193,6 +193,9 @@ void Box::format(Object& self, bool sizing) {
         else usedSize = self.size();
     }
 
+    if (!usedSize[0].definite()) usedSize[0] = availableSize[0];
+    if (!usedSize[1].definite()) usedSize[1] = availableSize[1];
+
     // Don't use flex or no items
     if (!use || _items.size() == 0) { 
         // When we have a parent, we need to set the usedSize in
@@ -200,10 +203,11 @@ void Box::format(Object& self, bool sizing) {
         if (parent != nullptr && parent->use) {
             auto _dir = parent->flowDirection() == 1 ? 0 : 1;
             usedSize[_dir] = availableSize[_dir];
+        } else {
+            // All objects need these 2 for their children.
+            availableSize = self.size(); 
+            innerAvailableSize = self.size();
         }
-        // All objects need these 2 for their children.
-        availableSize = self.size(); 
-        innerAvailableSize = self.size();
         // recurse to children after updating parent
         for (auto& _i : _items) {
             _i->box.parent = this;
@@ -541,7 +545,7 @@ void Box::format(Object& self, bool sizing) {
                 _item.usedSize[_cross] = _line.crossSize
                     - _item.margin.get(_cross)
                     - _item.margin.get(_cross + 2);
-                _item.format(*_i); // Format again with new size
+                _item.format(*_i, true); // Format again with new size
             } else { // No stretch, just use hypothetical-cross-size
                 _item.usedSize[_cross] = _item.hypoSize[_cross];
             }
@@ -707,6 +711,9 @@ void Box::format(Object& self, bool sizing) {
 
             (*_i)[_cross] = _crossPos - self.scrollbar[_cross].scrolled;
             (*_i)[_main] = _mainPos - self.scrollbar[_main].scrolled;
+
+            _item.format(*_i);
+
             (*_i)[_cross + 2] = _item.usedSize[_cross];
             (*_i)[_main + 2] = _item.usedSize[_main];
 
@@ -738,9 +745,7 @@ void Box::format(Object& self, bool sizing) {
     self.scrollbar[1].range[0] = std::min(self.scrollbar[1].range[0] - _innerContentBox[1], 0.f);
     self.scrollbar[0].range[1] = std::max(self.scrollbar[0].range[1] - _innerContentBox[2] - _innerContentBox[0], 0.f);
     self.scrollbar[1].range[1] = std::max(self.scrollbar[1].range[1] - _innerContentBox[3] - _innerContentBox[1], 0.f);
-    self.scrollbar[0].scrolled = std::clamp(self.scrollbar[0].scrolled, self.scrollbar[0].range[0], self.scrollbar[0].range[1]);
-    self.scrollbar[1].scrolled = std::clamp(self.scrollbar[1].scrolled, self.scrollbar[1].range[0], self.scrollbar[1].range[1]);
-
+    
     self.scrollbar.x->visible = (self.scrollbar.x->range[0] != 0
         || self.scrollbar.x->range[1] != 0
         || overflow.x == Flex::Overflow::Scroll)
