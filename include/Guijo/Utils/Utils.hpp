@@ -10,6 +10,9 @@ namespace Guijo {
         return static_cast<std::underlying_type_t<Enum>>(e);
     }
     // Enum operators
+    template<enum_type A>
+    constexpr auto operator~(A a) 
+        -> decltype(to_underlying(a)) { return ~to_underlying(a); }
     template<enum_type A, enum_type B>
     constexpr auto operator|(A a, B b) 
         -> decltype(to_underlying(a) | to_underlying(b)) { return to_underlying(a) | to_underlying(b); }
