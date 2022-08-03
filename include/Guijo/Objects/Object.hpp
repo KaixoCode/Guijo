@@ -5,6 +5,7 @@
 #include "Guijo/Objects/Scrollbar.hpp"
 
 namespace Guijo {
+
     class Object : public EventReceiver {
     public:
         Flex::Box box;
