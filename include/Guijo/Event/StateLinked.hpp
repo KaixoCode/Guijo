@@ -110,6 +110,12 @@ namespace Guijo {
             return m_Values.emplace_back(std::pair<StateLink, Ty>{ v, {} }).second;
         }
 
+        constexpr void clear() {
+            m_Values.clear();
+            m_StateStack.clear();
+            m_Current = npos;
+        }
+
     protected:
         constexpr static std::size_t npos = static_cast<std::size_t>(-1);
         std::size_t m_Current = npos;

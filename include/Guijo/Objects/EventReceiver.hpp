@@ -14,6 +14,7 @@ namespace Guijo {
     constexpr StateId Visible  = 3;
     constexpr StateId Disabled = 4;
     constexpr StateId Selected = 5;
+    constexpr StateId Delete = 6;
 
     class EventReceiver : public Refcounted, public Dimensions<float> {
     public:
