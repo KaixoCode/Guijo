@@ -57,7 +57,8 @@ namespace Guijo {
         constexpr Ty* get() { return value; }
         constexpr const Ty* get() const { return value; }
 
-        template<std::derived_from<Ty> T>
+        template<class T>
+            requires (std::derived_from<T, Ty> || std::derived_from<Ty, T>)
         constexpr Pointer<T> as() {
             if (auto _v = dynamic_cast<T*>(value)) {
                 _v->remember(); // We need to manually remember in this case!
