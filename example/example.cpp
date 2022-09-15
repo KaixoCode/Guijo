@@ -132,7 +132,7 @@ int main() {
         auto h = std::max(maxX - minX, maxY - minY) * 3.;
         auto center = Point<double>{ minX + (maxX - minX) / 2., minY + (maxY - minY) / 2. };
 
-        std::vector<PointWDist> points{};
+        std::list<PointWDist> points{};
 
         auto addAround = [&](Point<double>& p) {
             double x = p.x();
@@ -145,13 +145,14 @@ int main() {
 
         points.push_back({ center, 0.0 });
 
-        constexpr std::size_t iterations = 8;
+        constexpr std::size_t iterations = 10;
 
         double smallestFoundDistance = 1e10;
         for (std::size_t i = 0; i < iterations; ++i) {
             std::size_t size = points.size();
+            auto begin = points.begin();
             for (std::size_t j = 0; j < size; ++j) {
-                addAround(points[j]);
+                addAround(*begin++);
             }
 
             h /= 3.0;
@@ -177,7 +178,7 @@ int main() {
             smallestFoundDistance = 1e10;
         }
 
-        _guess->guess = points[0];
+        _guess->guess = points.front();
     }
 }
 
