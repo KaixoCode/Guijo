@@ -83,6 +83,11 @@ void Object::post(DrawContext& context) const {
 }
 
 void Object::update() {
+    auto _it = objects().begin();
+    while (_it != objects().end()) {
+        if ((*_it)->get(Delete)) _it = objects().erase(_it);
+        else ++_it;
+    }
     for (auto& _c : objects()) if (_c->get(Visible)) _c->update();
 }
 

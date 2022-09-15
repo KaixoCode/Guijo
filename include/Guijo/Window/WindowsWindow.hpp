@@ -5,6 +5,7 @@
 
 namespace Guijo {
     class Window : public WindowBase {
+    protected:
         friend class Gui;
         Window(const Construct& c);
     public:
@@ -24,7 +25,7 @@ namespace Guijo {
         void size(const Size<float>& v) override;
         void dimensions(const Dimensions<float>& v) override;
     
-    private:
+    protected:
         friend class Gui;
         static inline std::size_t windowId = 0;
 
@@ -33,6 +34,8 @@ namespace Guijo {
         std::size_t m_Id{};
         std::queue<std::unique_ptr<Event>> m_EventQueue;
         bool m_ShouldExit = false;
+
+        HCURSOR m_ArrorCursor = LoadCursor(NULL, IDC_ARROW);
 
         bool createWindow(const Construct& c);
 

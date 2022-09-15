@@ -76,7 +76,7 @@ bool Window::createWindow(const Construct& c) {
         CS_OWNDC,                         // Optional window styles.
         c.name.data(),                    // Window class
         c.name.data(),                    // Window text
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE, // Window style
+        WS_POPUP | WS_THICKFRAME | WS_SYSMENU | WS_CAPTION | WS_MAXIMIZEBOX | WS_MINIMIZEBOX | WS_VISIBLE, // Window style
         _x, _y, _w, _h,
         NULL,       // Parent window    
         NULL,       // Menu
@@ -87,6 +87,11 @@ bool Window::createWindow(const Construct& c) {
     if (m_Handle == NULL) return false;
     else {
         SetWindowSubclass(m_Handle, windowSubProc, m_Id, (DWORD_PTR)this);
+
+        // Set the margins of the Win32 window.
+        MARGINS _margins = { 1, 1, 1, 1 };
+        DwmExtendFrameIntoClientArea(m_Handle, &_margins);
+
         SendMessage(m_Handle, WM_CREATE, 0, 0);
 
         RECT _rect;
@@ -113,6 +118,12 @@ bool Window::loop() {
         if (++_handled > 30) break;
     }
     windowsLoop();
+
+    while (!m_EventQueue.empty()) { // Event cycle
+        handle(*m_EventQueue.front());
+        m_EventQueue.pop();
+    }
+
     return !m_ShouldExit;
 }
 
@@ -122,7 +133,7 @@ void Window::windowsLoop() {
     box.format(*this);
 
     update(); // Update cycle
-    
+
     m_Graphics.prepare(); // Graphics cycle
     pre(m_Graphics.context);
     draw(m_Graphics.context);
@@ -130,10 +141,6 @@ void Window::windowsLoop() {
     m_Graphics.render();
     m_Graphics.swapBuffers();
 
-    while (!m_EventQueue.empty()) { // Event cycle
-        handle(*m_EventQueue.front());
-        m_EventQueue.pop();
-    }
 }
 
 void Window::cursorEvent(float x, float y, KeyMod mod) {
@@ -207,14 +214,69 @@ KeyMod Window::getCurrentKeyMod() {
     return _keymod;
 }
 
+// Hit test the frame for resizing and moving.
+LRESULT HitTestNCA(HWND hWnd, WPARAM wParam, LPARAM lParam, float scale)
+{
+    // Get the point coordinates for the hit test.
+    POINT _ptMouse = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+
+    // Get the window rectangle.
+    RECT _rcWindow;
+    GetWindowRect(hWnd, &_rcWindow);
+
+    // Get the frame rectangle, adjusted for the style without a caption.
+    RECT _rcFrame = { 0 };
+    AdjustWindowRectEx(&_rcFrame, WS_OVERLAPPEDWINDOW & ~WS_CAPTION, FALSE, NULL);
+
+    // Determine if the hit test is for resizing. Default middle (1,1).
+    USHORT _uRow = 1;
+    USHORT _uCol = 1;
+    bool _fOnResizeBorder = false;
+
+    // Determine if the point is at the top or bottom of the window.
+    int _padding = 8 / scale;
+    if (_ptMouse.y >= _rcWindow.top && _ptMouse.y < _rcWindow.top + 32 / scale)
+    {
+        _fOnResizeBorder = (_ptMouse.y < (_rcWindow.top - _rcFrame.top));
+        _uRow = 0;
+    }
+    else if (_ptMouse.y < _rcWindow.bottom && _ptMouse.y >= _rcWindow.bottom - _padding)
+    {
+        _uRow = 2;
+    }
+
+    // Determine if the point is at the left or right of the window.
+    if (_ptMouse.x >= _rcWindow.left && _ptMouse.x < _rcWindow.left + _padding)
+        _uCol = 0; // left side
+
+    else if (_ptMouse.x < _rcWindow.right && _ptMouse.x >= _rcWindow.right - _padding)
+        _uCol = 2; // right side
+
+    // Hit test (HTTOPLEFT, ... HTBOTTOMRIGHT)
+    LRESULT _hitTests[3][3] =
+    {
+        { HTTOPLEFT,    _fOnResizeBorder ? HTTOP : HTCAPTION,    HTTOPRIGHT },
+        { HTLEFT,       HTNOWHERE,     HTRIGHT },
+        { HTBOTTOMLEFT, HTBOTTOM, HTBOTTOMRIGHT },
+    };
+
+    return _hitTests[_uRow][_uCol];
+}
+
 LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
     LPARAM lparam, UINT_PTR, DWORD_PTR self) {
     Window* _self = reinterpret_cast<Window*>(self);
     if (_self == nullptr) return 0;
-
+    bool _capture = true;
     switch (msg) {
+    case WM_NCLBUTTONDOWN: case WM_NCRBUTTONDOWN: case WM_NCMBUTTONDOWN: {
+        if (_self->cursor.position.x() < _self->width() - 3 * 45
+            || _self->cursor.position.y() <= 8 || _self->cursor.position.x() >= _self->width() - 8) break;
+        _capture = false;
+        [[fallthrough]];
+    }
     case WM_LBUTTONDOWN: case WM_RBUTTONDOWN: case WM_MBUTTONDOWN: {
-        SetCapture(hwnd);
+        if (_capture) SetCapture(hwnd);
         MouseButton _button =
             msg == WM_LBUTTONDOWN ? MouseButton::Left :
             msg == WM_RBUTTONDOWN ? MouseButton::Right :
@@ -222,6 +284,7 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
         _self->mouseButtonEvent(_button, true, getCurrentKeyMod());
         break;
     }
+    case WM_NCLBUTTONUP: case WM_NCRBUTTONUP: case WM_NCMBUTTONUP:
     case WM_LBUTTONUP: case WM_RBUTTONUP: case WM_MBUTTONUP: {
         MouseButton _button =
             msg == WM_LBUTTONUP ? MouseButton::Left :
@@ -231,10 +294,23 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
         ReleaseCapture();
         break;
     }
+    case WM_NCMOUSEMOVE: {
+        RECT _rect;
+        long _x = 0, _y = 0;
+        if (::GetWindowRect(hwnd, &_rect))
+            _x = _rect.left, _y = _rect.top;
+
+        float x = static_cast<float>(GET_X_LPARAM(lparam));
+        float y = static_cast<float>(GET_Y_LPARAM(lparam));
+        _self->cursorEvent(x -_x, y - _y, getCurrentKeyMod());
+        break;
+    }
     case WM_MOUSEMOVE: {
         float x = static_cast<float>(GET_X_LPARAM(lparam));
         float y = static_cast<float>(GET_Y_LPARAM(lparam));
         _self->cursorEvent(x, y, getCurrentKeyMod());
+
+        SetCursor(_self->m_ArrorCursor);
         break;
     }
     case WM_SYSKEYDOWN: case WM_SYSKEYUP: case WM_KEYDOWN:
@@ -285,6 +361,15 @@ LRESULT Window::windowSubProc(HWND hwnd, UINT msg, WPARAM wparam,
         _self->m_ShouldExit = true;
         PostQuitMessage(0); 
         return 0;
+    case WM_NCCALCSIZE: 
+        if (wparam == TRUE) return 0;
+        break;
+    case WM_NCHITTEST:
+        if (_self->cursor.position.x() >= _self->width() - 3 * 45
+            && _self->cursor.position.y() > 8 && _self->cursor.position.x() < _self->width() - 8) break;
+        if (auto _ret = HitTestNCA(hwnd, wparam, lparam, 1))
+            return _ret;
+        break;
     }
 
     return DefSubclassProc(hwnd, msg, wparam, lparam);
