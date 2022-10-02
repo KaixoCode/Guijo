@@ -25,6 +25,12 @@ namespace Guijo {
         void size(const Size<float>& v) override;
         void dimensions(const Dimensions<float>& v) override;
     
+        void setIcon(auto resource) {
+            HICON hIcon = LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(resource));
+            SendMessage(m_Handle, WM_SETICON, ICON_SMALL, (LPARAM)hIcon);
+            SendMessage(m_Handle, WM_SETICON, ICON_BIG, (LPARAM)hIcon);
+        }
+
     protected:
         friend class Gui;
         static inline std::size_t windowId = 0;
