@@ -88,6 +88,7 @@ namespace Guijo {
         KeyMod mod;      // Key mods
         bool repeat;     // Is repeat key (fired when key held down)
         bool forward(const EventReceiver& c) const override { return true; };
+        constexpr operator KeyCode() const { return keycode | mod; }
     };
 
     struct KeyType : public Event {
