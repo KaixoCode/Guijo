@@ -140,7 +140,6 @@ void Window::windowsLoop() {
     post(m_Graphics.context);
     m_Graphics.render();
     m_Graphics.swapBuffers();
-
 }
 
 void Window::cursorEvent(float x, float y, KeyMod mod) {

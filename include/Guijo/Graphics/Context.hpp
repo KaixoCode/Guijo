@@ -26,15 +26,35 @@ namespace Guijo {
         Project,   // ======  Cut off at point + strokeWeight
     };
 
+    struct MemoryPool {
+        std::vector<uint8_t> data;
+        std::size_t counter = 0ull;
+
+        MemoryPool() {
+            data.resize(100);
+        }
+
+        uint8_t* allocate(std::size_t& index, std::size_t bytes) {
+            if (counter + bytes >= data.size()) 
+                data.resize(counter + bytes + 1);
+            std::uint8_t* _ptr = &data[counter];
+            index = counter;
+            counter += bytes;
+            return _ptr;
+        }
+
+        void reset() { counter = 0; }
+    };
+
     // Converts trivially destructible types into a unique ptr of raw bytes
     template<class ...Tys> 
         requires ((std::is_trivially_destructible_v<std::decay_t<Tys>> && ...))
-    std::unique_ptr<uint8_t[]> make(Tys&&...args) {
-        std::unique_ptr<uint8_t[]> _ptr = std::make_unique<uint8_t[]>((sizeof(Tys) + ...));
-        uint8_t* _data = _ptr.get();
+    std::size_t make(MemoryPool& pool, Tys&&...args) {
+        std::size_t _index;
+        uint8_t* _data = pool.allocate(_index, (sizeof(Tys) + ...));
         std::size_t _offset = 0;
         ((std::memcpy(&_data[_offset], &args, sizeof(Tys)), _offset += sizeof(Tys)), ...);
-        return std::move(_ptr);
+        return _index;
     }
 
     enum class Commands : std::size_t {
@@ -68,102 +88,104 @@ namespace Guijo {
     template<> struct Command<ClearClip> { };
 
     struct CommandData {
-        template<Commands Ty> CommandData(const Command<Ty>& val)
-            : type(Ty), data(make(val)) {}
+        template<Commands Ty> CommandData(MemoryPool& pool, const Command<Ty>& val)
+            : pool(pool), type(Ty), index(make(pool, val)) {}
 
+        MemoryPool& pool;
         Commands type;
-        std::unique_ptr<uint8_t[]> data;
+        std::size_t index;
 
         template<Commands Ty> Command<Ty>& get() {
-            return *reinterpret_cast<Command<Ty>*>(data.get()); 
+            return *reinterpret_cast<Command<Ty>*>(&pool.data[index]);
         }
     };
 
     class DrawContext {
         friend class GraphicsBase;
     public:
-        void fill(const Command<Fill>& v) { m_Commands.emplace(v); }
-        void stroke(const Command<Stroke>& v) { m_Commands.emplace(v); }
-        void strokeWeight(const Command<StrokeWeight>& v) { m_Commands.emplace(v); }
-        void noStroke() { m_Commands.emplace(Command<StrokeWeight>{ 0 }); }
-        void rect(const Command<Rect>& v) { m_Commands.emplace(v); }
-        void line(const Command<Line>& v) { m_Commands.emplace(v); }
-        void circle(const Command<Circle>& v) { m_Commands.emplace(v); }
-        void triangle(const Command<Triangle>& v) { m_Commands.emplace(v); }
-        void text(const Command<Text>& v) { m_Commands.emplace(v); }
-        void fontSize(const Command<FontSize>& v) { m_Commands.emplace(v); }
-        void font(const Command<SetFont>& v) { m_Commands.emplace(v); }
-        void textAlign(const Command<TextAlign>& v) { m_Commands.emplace(v); }
-        void translate(const Command<Translate>& v) { m_Commands.emplace(v); }
-        void pushMatrix() { m_Commands.emplace(Command<PushMatrix>{}); }
-        void popMatrix() { m_Commands.emplace(Command<PopMatrix>{}); }
-        void viewport(const Command<Viewport>& v) { m_Commands.emplace(v); }
-        void clip(const Command<Clip>& v) { m_Commands.emplace(v); }
-        void pushClip() { m_Commands.emplace(Command<PushClip>{}); }
-        void popClip() { m_Commands.emplace(Command<PopClip>{}); }
-        void clearClip() { m_Commands.emplace(Command<ClearClip>{}); }
+        void fill(const Command<Fill>& v) { m_Commands.emplace_back(memPool, v); }
+        void stroke(const Command<Stroke>& v) { m_Commands.emplace_back(memPool, v); }
+        void strokeWeight(const Command<StrokeWeight>& v) { m_Commands.emplace_back(memPool, v); }
+        void noStroke() { m_Commands.emplace_back(memPool, Command<StrokeWeight>{ 0 }); }
+        void rect(const Command<Rect>& v) { m_Commands.emplace_back(memPool, v); }
+        void line(const Command<Line>& v) { m_Commands.emplace_back(memPool, v); }
+        void circle(const Command<Circle>& v) { m_Commands.emplace_back(memPool, v); }
+        void triangle(const Command<Triangle>& v) { m_Commands.emplace_back(memPool, v); }
+        void text(const Command<Text>& v) { m_Commands.emplace_back(memPool, v); }
+        void fontSize(const Command<FontSize>& v) { m_Commands.emplace_back(memPool, v); }
+        void font(const Command<SetFont>& v) { m_Commands.emplace_back(memPool, v); }
+        void textAlign(const Command<TextAlign>& v) { m_Commands.emplace_back(memPool, v); }
+        void translate(const Command<Translate>& v) { m_Commands.emplace_back(memPool, v); }
+        void pushMatrix() { m_Commands.emplace_back(memPool, Command<PushMatrix>{}); }
+        void popMatrix() { m_Commands.emplace_back(memPool, Command<PopMatrix>{}); }
+        void viewport(const Command<Viewport>& v) { m_Commands.emplace_back(memPool, v); }
+        void clip(const Command<Clip>& v) { m_Commands.emplace_back(memPool, v); }
+        void pushClip() { m_Commands.emplace_back(memPool, Command<PushClip>{}); }
+        void popClip() { m_Commands.emplace_back(memPool, Command<PopClip>{}); }
+        void clearClip() { m_Commands.emplace_back(memPool, Command<ClearClip>{}); }
 
         void fill(const Color& v) {
-            m_Commands.emplace(Command<Fill>{ v });
+            m_Commands.emplace_back(memPool, Command<Fill>{ v });
         }
         
         void stroke(const Color& v) {
-            m_Commands.emplace(Command<Stroke>{ v });
+            m_Commands.emplace_back(memPool, Command<Stroke>{ v });
         }
         
         void strokeWeight(float v) {
-            m_Commands.emplace(Command<StrokeWeight>{ v });
+            m_Commands.emplace_back(memPool, Command<StrokeWeight>{ v });
         }
 
         void rect(const Dimensions<float>& rect, const Dimensions<float> radius = 0, Angle<float> rotation = 0) {
-            m_Commands.emplace(Command<Rect>{ rect, radius, rotation });
+            m_Commands.emplace_back(memPool, Command<Rect>{ rect, radius, rotation });
         }
 
         void line(const Point<float>& start, const Point<float>& end, StrokeCap cap = StrokeCap::Round) {
-            m_Commands.emplace(Command<Line>{ start, end, cap }); 
+            m_Commands.emplace_back(memPool, Command<Line>{ start, end, cap });
         }
 
         void circle(const Point<float>& center, float radius, const Vec2<Angle<float>>& angles = { 0, 0 }) {
-            m_Commands.emplace(Command<Circle>{ center, radius, angles });
+            m_Commands.emplace_back(memPool, Command<Circle>{ center, radius, angles });
         }
 
         void triangle(const Point<float>& a, const Point<float> b, const Point<float> c) {
-            m_Commands.emplace(Command<Triangle>{ a, b, c });
+            m_Commands.emplace_back(memPool, Command<Triangle>{ a, b, c });
         }
 
         void text(std::string_view text, const Point<float>& pos) { 
-            m_Commands.emplace(Command<Text>{ text, pos });
+            m_Commands.emplace_back(memPool, Command<Text>{ text, pos });
         }
 
         void fontSize(float size) { 
-            m_Commands.emplace(Command<FontSize>{ size });
+            m_Commands.emplace_back(memPool, Command<FontSize>{ size });
         }
 
         void font(std::string_view font) {
-            m_Commands.emplace(Command<SetFont>{ font });
+            m_Commands.emplace_back(memPool, Command<SetFont>{ font });
         }
 
         void textAlign(Alignment align) { 
-            m_Commands.emplace(Command<TextAlign>{ align });
+            m_Commands.emplace_back(memPool, Command<TextAlign>{ align });
         }
 
         void textAlign(Align align) { 
-            m_Commands.emplace(Command<TextAlign>{ static_cast<Alignment>(align) });
+            m_Commands.emplace_back(memPool, Command<TextAlign>{ static_cast<Alignment>(align) });
         }
 
         void translate(const Point<float>& translate) {
-            m_Commands.emplace(Command<Translate>{ translate });
+            m_Commands.emplace_back(memPool, Command<Translate>{ translate });
         }
 
         void viewport(const Dimensions<float>& viewport) {
-            m_Commands.emplace(Command<Viewport>{ viewport });
+            m_Commands.emplace_back(memPool, Command<Viewport>{ viewport });
         }
 
         void clip(Dimensions<float> clip) { 
-            m_Commands.emplace(Command<Clip>{ clip });
+            m_Commands.emplace_back(memPool, Command<Clip>{ clip });
         }
 
     private:
-        std::queue<CommandData> m_Commands;
+        MemoryPool memPool;
+        std::vector<CommandData> m_Commands;
     };
 }

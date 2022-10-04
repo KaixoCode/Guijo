@@ -15,12 +15,13 @@ void GraphicsBase::render() {
     runCommand(_clip);
     runCommand(_vp);
 
-    while (!commands.empty()) {
-        runCommand(commands.front(),
+    for (auto& command : commands) {
+        runCommand(command,
             std::make_index_sequence<
             static_cast<std::size_t>(Commands::Amount)>{});
-        commands.pop();
     }
+    context.memPool.reset();
+    commands.clear();
 }
 
 void GraphicsBase::dimensions(const Dimensions<float>& dims) {
